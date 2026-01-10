@@ -1,6 +1,13 @@
 """True async filesystem I/O — no fake async, no GIL stalls."""
 
-from rapfiles._rapfiles import read_file_async, write_file_async
+try:
+    from _rapfiles import read_file_async, write_file_async
+except ImportError:
+    # Try alternative import path
+    try:
+        from rapfiles._rapfiles import read_file_async, write_file_async
+    except ImportError:
+        raise ImportError("Could not import _rapfiles. Make sure rapfiles is built with maturin.")
 
 __version__ = "0.0.1"
 __all__ = ["read_file_async", "write_file_async"]
