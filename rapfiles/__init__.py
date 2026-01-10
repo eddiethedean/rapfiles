@@ -7,7 +7,9 @@ except ImportError:
     try:
         from rapfiles._rapfiles import read_file_async, write_file_async
     except ImportError:
-        raise ImportError("Could not import _rapfiles. Make sure rapfiles is built with maturin.")
+        raise ImportError(
+            "Could not import _rapfiles. Make sure rapfiles is built with maturin."
+        )
 
 __version__ = "0.0.1"
 __all__ = ["read_file_async", "write_file_async"]
@@ -22,4 +24,3 @@ async def read_file(path: str) -> str:
 async def write_file(path: str, contents: str) -> None:
     """Write a file asynchronously using true async I/O."""
     await write_file_async(path, contents)
-
