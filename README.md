@@ -2,7 +2,13 @@
 
 **True async filesystem I/O — no fake async, no GIL stalls.**
 
----
+[![PyPI version](https://badge.fury.io/py/rapfiles.svg)](https://badge.fury.io/py/rapfiles)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Overview
+
+`rapfiles` provides true async filesystem I/O operations for Python, backed by Rust and Tokio. Unlike libraries that wrap blocking I/O in `async` syntax, `rapfiles` guarantees that all I/O work executes **outside the Python GIL**, ensuring event loops never stall under load.
 
 ## Why `rap*`?
 
@@ -10,22 +16,33 @@ Packages prefixed with **`rap`** stand for **Real Async Python**. Unlike many li
 
 See the [rap-manifesto](https://github.com/rap-project/rap-manifesto) for philosophy and guarantees.
 
----
+## Features
 
-## What this package provides
+- ✅ **True async** file reads and writes
+- ✅ **Native Rust-backed** execution (Tokio)
+- ✅ **Zero Python thread pools**
+- ✅ **Event-loop-safe** concurrency under load
+- ✅ **GIL-independent** I/O operations
+- ✅ **Verified** by Fake Async Detector
 
-- True async file reads and writes
-- Native Rust-backed execution (Tokio)
-- Zero Python thread pools
-- Event-loop-safe concurrency under load
-- GIL-independent I/O operations
+## Requirements
 
----
+- Python 3.8+
+- Rust 1.70+ (for building from source)
 
 ## Installation
 
 ```bash
 pip install rapfiles
+```
+
+### Building from Source
+
+```bash
+git clone https://github.com/rap-project/rapfiles.git
+cd rapfiles
+pip install maturin
+maturin develop
 ```
 
 ---
@@ -37,31 +54,103 @@ import asyncio
 from rapfiles import read_file, write_file
 
 async def main():
+    # Write file asynchronously (true async, GIL-independent)
+    await write_file("example.txt", "Hello from rapfiles!")
+    
     # Read file asynchronously (true async, GIL-independent)
     content = await read_file("example.txt")
+    print(content)  # Output: Hello from rapfiles!
     
-    # Write file asynchronously (true async, GIL-independent)
+    # Write another file
     await write_file("output.txt", content)
 
 asyncio.run(main())
 ```
 
----
+### Concurrent File Operations
+
+```python
+import asyncio
+from rapfiles import read_file, write_file
+
+async def main():
+    # Process multiple files concurrently
+    tasks = [
+        write_file("file1.txt", "Content 1"),
+        write_file("file2.txt", "Content 2"),
+        write_file("file3.txt", "Content 3"),
+    ]
+    await asyncio.gather(*tasks)
+    
+    # Read all files concurrently
+    contents = await asyncio.gather(
+        read_file("file1.txt"),
+        read_file("file2.txt"),
+        read_file("file3.txt"),
+    )
+    print(contents)  # ['Content 1', 'Content 2', 'Content 3']
+
+asyncio.run(main())
+```
+
+## API Reference
+
+### `read_file(path: str) -> str`
+
+Read a file asynchronously and return its contents as a string.
+
+**Parameters:**
+- `path` (str): Path to the file to read
+
+**Returns:**
+- `str`: File contents
+
+**Raises:**
+- `IOError`: If the file cannot be read
+
+### `write_file(path: str, contents: str) -> None`
+
+Write content to a file asynchronously.
+
+**Parameters:**
+- `path` (str): Path to the file to write
+- `contents` (str): Content to write to the file
+
+**Raises:**
+- `IOError`: If the file cannot be written
 
 ## Benchmarks
 
-This package passes the Fake Async Detector. Benchmarks are available in the [rap-bench](https://github.com/rap-project/rap-bench) repository.
+This package passes the [Fake Async Detector](https://github.com/rap-project/rap-bench). Benchmarks are available in the [rap-bench](https://github.com/rap-project/rap-bench) repository.
 
----
+Run the detector yourself:
 
-## Non-Goals
+```bash
+pip install rap-bench
+rap-bench detect rapfiles
+```
+
+## Related Projects
+
+- [rap-manifesto](https://github.com/rap-project/rap-manifesto) - Philosophy and guarantees
+- [rap-bench](https://github.com/rap-project/rap-bench) - Fake Async Detector CLI
+- [rapsqlite](https://github.com/rap-project/rapsqlite) - True async SQLite
+- [rapcsv](https://github.com/rap-project/rapcsv) - Streaming async CSV
+
+## Limitations
 
 - Not a drop-in replacement for `asyncio` file I/O
 - Not compatible with all filesystem operations (yet)
 - Not designed for synchronous use cases
 
----
+## Contributing
+
+Contributions are welcome! Please see our [contributing guidelines](https://github.com/rap-project/rapfiles/blob/main/CONTRIBUTING.md) (coming soon).
 
 ## License
 
 MIT
+
+## Changelog
+
+See [CHANGELOG.md](https://github.com/rap-project/rapfiles/blob/main/CHANGELOG.md) (coming soon) for version history.
