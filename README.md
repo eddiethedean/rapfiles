@@ -10,11 +10,13 @@
 
 `rapfiles` provides true async filesystem I/O operations for Python, backed by Rust and Tokio. Unlike libraries that wrap blocking I/O in `async` syntax, `rapfiles` guarantees that all I/O work executes **outside the Python GIL**, ensuring event loops never stall under load.
 
+**Roadmap Goal**: Achieve drop-in replacement compatibility with `aiofiles`, enabling seamless migration with true async performance. See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for details.
+
 ## Why `rap*`?
 
 Packages prefixed with **`rap`** stand for **Real Async Python**. Unlike many libraries that merely wrap blocking I/O in `async` syntax, `rap*` packages guarantee that all I/O work is executed **outside the Python GIL** using native runtimes (primarily Rust). This means event loops are never stalled by hidden thread pools, blocking syscalls, or cooperative yielding tricks. If a `rap*` API is `async`, it is *structurally non-blocking by design*, not by convention. The `rap` prefix is a contract: measurable concurrency, real parallelism, and verifiable async behavior under load.
 
-See the [rap-manifesto](https://github.com/rap-project/rap-manifesto) for philosophy and guarantees.
+See the [rap-manifesto](https://github.com/eddiethedean/rap-manifesto) for philosophy and guarantees.
 
 ## Features
 
@@ -39,7 +41,7 @@ pip install rapfiles
 ### Building from Source
 
 ```bash
-git clone https://github.com/rap-project/rapfiles.git
+git clone https://github.com/eddiethedean/rapfiles.git
 cd rapfiles
 pip install maturin
 maturin develop
@@ -121,7 +123,7 @@ Write content to a file asynchronously.
 
 ## Benchmarks
 
-This package passes the [Fake Async Detector](https://github.com/rap-project/rap-bench). Benchmarks are available in the [rap-bench](https://github.com/rap-project/rap-bench) repository.
+This package passes the [Fake Async Detector](https://github.com/eddiethedean/rap-bench). Benchmarks are available in the [rap-bench](https://github.com/eddiethedean/rap-bench) repository.
 
 Run the detector yourself:
 
@@ -130,22 +132,36 @@ pip install rap-bench
 rap-bench detect rapfiles
 ```
 
+## Roadmap
+
+See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for detailed development plans. Key goals include:
+- Drop-in replacement for `aiofiles` (Phase 1)
+- Comprehensive filesystem operations (directories, metadata, permissions)
+- Advanced I/O patterns and zero-copy optimizations
+- Filesystem traversal and watching capabilities
+
 ## Related Projects
 
-- [rap-manifesto](https://github.com/rap-project/rap-manifesto) - Philosophy and guarantees
-- [rap-bench](https://github.com/rap-project/rap-bench) - Fake Async Detector CLI
-- [rapsqlite](https://github.com/rap-project/rapsqlite) - True async SQLite
-- [rapcsv](https://github.com/rap-project/rapcsv) - Streaming async CSV
+- [rap-manifesto](https://github.com/eddiethedean/rap-manifesto) - Philosophy and guarantees
+- [rap-bench](https://github.com/eddiethedean/rap-bench) - Fake Async Detector CLI
+- [rapsqlite](https://github.com/eddiethedean/rapsqlite) - True async SQLite
+- [rapcsv](https://github.com/eddiethedean/rapcsv) - Streaming async CSV
 
-## Limitations
+## Limitations (MVP v0.0.1)
 
-- Not a drop-in replacement for `asyncio` file I/O
-- Not compatible with all filesystem operations (yet)
+**Current MVP limitations:**
+- Only basic `read_file()` and `write_file()` operations
+- No directory operations (listing, creation, deletion)
+- No file metadata operations (stat, permissions, timestamps)
+- No filesystem traversal or navigation
+- Not yet a drop-in replacement for `aiofiles` (goal for Phase 1)
 - Not designed for synchronous use cases
+
+**Roadmap**: See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for planned improvements. Our goal is to achieve drop-in replacement compatibility with `aiofiles` while providing true async performance with GIL-independent I/O.
 
 ## Contributing
 
-Contributions are welcome! Please see our [contributing guidelines](https://github.com/rap-project/rapfiles/blob/main/CONTRIBUTING.md) (coming soon).
+Contributions are welcome! Please see our [contributing guidelines](https://github.com/eddiethedean/rapfiles/blob/main/CONTRIBUTING.md) (coming soon).
 
 ## License
 
@@ -153,4 +169,4 @@ MIT
 
 ## Changelog
 
-See [CHANGELOG.md](https://github.com/rap-project/rapfiles/blob/main/CHANGELOG.md) (coming soon) for version history.
+See [CHANGELOG.md](https://github.com/eddiethedean/rapfiles/blob/main/CHANGELOG.md) (coming soon) for version history.
