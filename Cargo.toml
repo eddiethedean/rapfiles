@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["RAP Project"]
 license = "MIT"
 description = "True async filesystem I/O — no fake async, no GIL stalls."
-repository = "https://github.com/rap-project/rapfiles"
+repository = "https://github.com/eddiethedean/rapfiles"
 
 [lib]
 name = "rapfiles"
