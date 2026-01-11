@@ -2,7 +2,8 @@
 
 **True async filesystem I/O — no fake async, no GIL stalls.**
 
-[![PyPI version](https://badge.fury.io/py/rapfiles.svg)](https://badge.fury.io/py/rapfiles)
+[![PyPI version](https://img.shields.io/pypi/v/rapfiles.svg)](https://pypi.org/project/rapfiles/)
+[![Downloads](https://pepy.tech/badge/rapfiles)](https://pepy.tech/project/rapfiles)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -147,15 +148,21 @@ See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) 
 - [rapsqlite](https://github.com/eddiethedean/rapsqlite) - True async SQLite
 - [rapcsv](https://github.com/eddiethedean/rapcsv) - Streaming async CSV
 
-## Limitations (MVP v0.0.1)
+## Limitations (v0.0.2)
 
-**Current MVP limitations:**
+**Current limitations:**
 - Only basic `read_file()` and `write_file()` operations
 - No directory operations (listing, creation, deletion)
 - No file metadata operations (stat, permissions, timestamps)
 - No filesystem traversal or navigation
 - Not yet a drop-in replacement for `aiofiles` (goal for Phase 1)
 - Not designed for synchronous use cases
+
+**Recent improvements (v0.0.2):**
+- ✅ Security fixes: Upgraded dependencies (pyo3 0.27, pyo3-async-runtimes 0.27)
+- ✅ Input validation: Added path validation (non-empty, no null bytes)
+- ✅ Improved error handling: Enhanced error messages with file path context
+- ✅ Type stubs: Added `.pyi` type stubs for better IDE support and type checking
 
 **Roadmap**: See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for planned improvements. Our goal is to achieve drop-in replacement compatibility with `aiofiles` while providing true async performance with GIL-independent I/O.
 

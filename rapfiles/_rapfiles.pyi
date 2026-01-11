@@ -1,0 +1,6 @@
+"""Type stubs for _rapfiles Rust extension module."""
+
+from typing import Coroutine, Any
+
+def read_file_async(path: str) -> Coroutine[Any, Any, str]: ...
+def write_file_async(path: str, contents: str) -> Coroutine[Any, Any, None]: ...

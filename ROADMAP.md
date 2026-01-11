@@ -4,7 +4,7 @@ This roadmap outlines the development plan for `rapfiles`, aligned with the [RAP
 
 ## Current Status
 
-**MVP Version (v0.0.1)** - Current limitations:
+**Current Version (v0.0.2)** - Current limitations:
 
 - Only basic `read_file()` and `write_file()` operations
 - No directory operations (listing, creation, deletion)
@@ -12,8 +12,13 @@ This roadmap outlines the development plan for `rapfiles`, aligned with the [RAP
 - No file system navigation or traversal
 - No symbolic link handling
 - No concurrent batch operations API
-- Limited error handling and context
 - Not yet a drop-in replacement for `aiofiles`
+
+**Recent improvements (v0.0.2):**
+- ✅ Security fixes: Upgraded dependencies (pyo3 0.27, pyo3-async-runtimes 0.27)
+- ✅ Input validation: Added path validation (non-empty, no null bytes)
+- ✅ Improved error handling: Enhanced error messages with file path context
+- ✅ Type stubs: Added `.pyi` type stubs for better IDE support and type checking
 
 **Goal**: Achieve drop-in replacement compatibility with `aiofiles` to enable seamless migration with true async performance.
 

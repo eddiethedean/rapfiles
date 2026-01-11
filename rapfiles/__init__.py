@@ -1,7 +1,9 @@
 """True async filesystem I/O — no fake async, no GIL stalls."""
 
+from typing import List
+
 try:
-    from _rapfiles import read_file_async, write_file_async
+    from _rapfiles import read_file_async, write_file_async  # type: ignore[import-not-found]
 except ImportError:
     # Try alternative import path
     try:
@@ -11,8 +13,8 @@ except ImportError:
             "Could not import _rapfiles. Make sure rapfiles is built with maturin."
         )
 
-__version__ = "0.0.1"
-__all__ = ["read_file_async", "write_file_async"]
+__version__: str = "0.0.2"
+__all__: List[str] = ["read_file_async", "write_file_async"]
 
 
 # Convenience async functions

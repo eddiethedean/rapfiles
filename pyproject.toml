@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "rapfiles"
-version = "0.0.1"
+version = "0.0.2"
 description = "True async filesystem I/O — no fake async, no GIL stalls."
 readme = "README.md"
 requires-python = ">=3.8"
