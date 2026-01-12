@@ -3,7 +3,6 @@ name = "rapfiles"
 version = "0.0.2"
 edition = "2021"
 authors = ["RAP Project"]
-license = "MIT"
 description = "True async filesystem I/O — no fake async, no GIL stalls."
 repository = "https://github.com/eddiethedean/rapfiles"
 
