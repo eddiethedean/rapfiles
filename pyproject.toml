@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "rapfiles"
-version = "0.0.2"
+version = "0.1.0"
 description = "True async filesystem I/O — no fake async, no GIL stalls."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -35,3 +35,24 @@ features = ["pyo3/extension-module"]
 asyncio_mode = "auto"
 testpaths = ["."]
 python_files = ["test_*.py"]
+
+[tool.mypy]
+python_version = "3.9"  # Mypy requires 3.9+, but code is compatible with 3.8+
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "rapfiles._rapfiles",
+]
+ignore_missing_imports = true

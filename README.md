@@ -27,6 +27,11 @@ See the [rap-manifesto](https://github.com/eddiethedean/rap-manifesto) for philo
 - ✅ **Event-loop-safe** concurrency under load
 - ✅ **GIL-independent** I/O operations
 - ✅ **Verified** by Fake Async Detector
+- ✅ **File handles** with async context managers (`async with`)
+- ✅ **Directory operations** (create, remove, list, walk)
+- ✅ **File metadata** (stat, size, timestamps)
+- ✅ **Path operations** (`rapfiles.ospath` module)
+- ✅ **aiofiles compatibility** (Phase 1 complete)
 
 ## Requirements
 
@@ -52,6 +57,8 @@ maturin develop
 
 ## Usage
 
+### Basic File Operations
+
 ```python
 import asyncio
 from rapfiles import read_file, write_file
@@ -66,6 +73,83 @@ async def main():
     
     # Write another file
     await write_file("output.txt", content)
+
+asyncio.run(main())
+```
+
+### File Handles (aiofiles compatible)
+
+```python
+import asyncio
+from rapfiles import open
+
+async def main():
+    # Open file with async context manager
+    async with open("file.txt", "r") as f:
+        content = await f.read()
+        print(content)
+    
+    # Write mode
+    async with open("output.txt", "w") as f:
+        await f.write("Hello, world!")
+    
+    # Binary mode
+    async with open("image.png", "rb") as f:
+        data = await f.read()
+    
+    # Read lines
+    async with open("file.txt", "r") as f:
+        line = await f.readline()
+        lines = await f.readlines()
+
+asyncio.run(main())
+```
+
+### Directory Operations
+
+```python
+import asyncio
+from rapfiles import create_dir, list_dir, exists, is_file, is_dir, walk_dir
+
+async def main():
+    # Create directories
+    await create_dir("new_dir")
+    await create_dir_all("path/to/nested/dir")
+    
+    # Check if path exists
+    if await exists("file.txt"):
+        print("File exists!")
+    
+    # Check file/directory type
+    if await is_file("file.txt"):
+        print("It's a file")
+    if await is_dir("directory"):
+        print("It's a directory")
+    
+    # List directory contents
+    files = await list_dir(".")
+    print(files)
+    
+    # Recursively walk directory
+    for path, is_file in await walk_dir("."):
+        print(f"{path}: {'file' if is_file else 'dir'}")
+
+asyncio.run(main())
+```
+
+### File Metadata
+
+```python
+import asyncio
+from rapfiles import stat, FileMetadata
+
+async def main():
+    # Get file statistics
+    metadata: FileMetadata = await stat("file.txt")
+    print(f"Size: {metadata.size} bytes")
+    print(f"Is file: {metadata.is_file}")
+    print(f"Modified: {metadata.modified}")
+    print(f"Created: {metadata.created}")
 
 asyncio.run(main())
 ```
@@ -98,7 +182,9 @@ asyncio.run(main())
 
 ## API Reference
 
-### `read_file(path: str) -> str`
+### File Operations
+
+#### `read_file(path: str) -> str`
 
 Read a file asynchronously and return its contents as a string.
 
@@ -106,12 +192,14 @@ Read a file asynchronously and return its contents as a string.
 - `path` (str): Path to the file to read
 
 **Returns:**
-- `str`: File contents
+- `str`: File contents as UTF-8 decoded string
 
 **Raises:**
+- `FileNotFoundError`: If the file does not exist
 - `IOError`: If the file cannot be read
+- `ValueError`: If the path is invalid
 
-### `write_file(path: str, contents: str) -> None`
+#### `write_file(path: str, contents: str) -> None`
 
 Write content to a file asynchronously.
 
@@ -121,6 +209,214 @@ Write content to a file asynchronously.
 
 **Raises:**
 - `IOError`: If the file cannot be written
+- `PermissionError`: If write permission is denied
+- `ValueError`: If the path is invalid
+
+#### `read_file_bytes(path: str) -> bytes`
+
+Read a file asynchronously and return its contents as bytes.
+
+**Parameters:**
+- `path` (str): Path to the file to read
+
+**Returns:**
+- `bytes`: File contents as raw bytes
+
+**Raises:**
+- `FileNotFoundError`: If the file does not exist
+- `IOError`: If the file cannot be read
+
+#### `write_file_bytes(path: str, contents: bytes) -> None`
+
+Write bytes to a file asynchronously.
+
+**Parameters:**
+- `path` (str): Path to the file to write
+- `contents` (bytes): Bytes to write to the file
+
+**Raises:**
+- `IOError`: If the file cannot be written
+- `PermissionError`: If write permission is denied
+
+#### `append_file(path: str, contents: str) -> None`
+
+Append content to a file asynchronously.
+
+**Parameters:**
+- `path` (str): Path to the file to append to
+- `contents` (str): Content to append to the file
+
+**Raises:**
+- `IOError`: If the file cannot be written
+- `PermissionError`: If write permission is denied
+
+### File Handles
+
+#### `open(file: Union[str, bytes], mode: str = "r", ...) -> AsyncFile`
+
+Open a file asynchronously (aiofiles.open() compatible).
+
+**Parameters:**
+- `file` (Union[str, bytes]): Path to the file
+- `mode` (str): File mode (r, r+, w, w+, a, a+, rb, rb+, wb, wb+, ab, ab+)
+- `buffering` (int): Buffer size (accepted for compatibility, not yet implemented)
+- `encoding` (Optional[str]): Text encoding (accepted for compatibility, not yet implemented)
+- `errors` (Optional[str]): Error handling (accepted for compatibility, not yet implemented)
+- `newline` (Optional[str]): Newline handling (accepted for compatibility, not yet implemented)
+- `closefd` (bool): Close file descriptor (accepted for compatibility, not yet implemented)
+- `opener` (Optional[Any]): Custom opener (accepted for compatibility, not yet implemented)
+
+**Returns:**
+- Async context manager that yields an `AsyncFile` instance
+
+**Example:**
+```python
+async with open("file.txt", "r") as f:
+    content = await f.read()
+```
+
+#### `AsyncFile` Class
+
+An async file handle for true async I/O operations.
+
+**Methods:**
+- `read(size: int = -1) -> Union[str, bytes]`: Read from file (returns str for text mode, bytes for binary)
+- `write(data: Union[str, bytes]) -> int`: Write to file, returns number of bytes written
+- `readline(size: int = -1) -> Union[str, bytes]`: Read a single line
+- `readlines(hint: int = -1) -> List[Union[str, bytes]]`: Read all lines
+- `seek(offset: int, whence: int = 0) -> int`: Seek to position (0=start, 1=current, 2=end)
+- `tell() -> int`: Get current file position
+- `close() -> None`: Close the file (automatic on context exit)
+
+### Directory Operations
+
+#### `create_dir(path: str) -> None`
+
+Create a directory asynchronously. Parent directories must exist.
+
+**Raises:**
+- `FileExistsError`: If the directory already exists
+- `IOError`: If the directory cannot be created
+
+#### `create_dir_all(path: str) -> None`
+
+Create a directory and all parent directories asynchronously.
+
+**Raises:**
+- `IOError`: If the directory cannot be created
+
+#### `remove_dir(path: str) -> None`
+
+Remove an empty directory asynchronously.
+
+**Raises:**
+- `FileNotFoundError`: If the directory does not exist
+- `IOError`: If the directory is not empty or cannot be removed
+
+#### `remove_dir_all(path: str) -> None`
+
+Remove a directory and all its contents asynchronously.
+
+**Raises:**
+- `FileNotFoundError`: If the directory does not exist
+- `IOError`: If the directory cannot be removed
+
+#### `list_dir(path: str) -> List[str]`
+
+List directory contents asynchronously.
+
+**Returns:**
+- `List[str]`: List of file and directory names
+
+**Raises:**
+- `FileNotFoundError`: If the directory does not exist
+- `IOError`: If the directory cannot be read
+
+#### `exists(path: str) -> bool`
+
+Check if a path exists asynchronously.
+
+**Returns:**
+- `bool`: True if path exists, False otherwise
+
+#### `is_file(path: str) -> bool`
+
+Check if a path is a file asynchronously.
+
+**Returns:**
+- `bool`: True if path is a file, False otherwise
+
+**Raises:**
+- `IOError`: If the path does not exist
+
+#### `is_dir(path: str) -> bool`
+
+Check if a path is a directory asynchronously.
+
+**Returns:**
+- `bool`: True if path is a directory, False otherwise
+
+**Raises:**
+- `IOError`: If the path does not exist
+
+#### `walk_dir(path: str) -> List[Tuple[str, bool]]`
+
+Recursively walk a directory asynchronously.
+
+**Parameters:**
+- `path` (str): Directory path to walk
+
+**Returns:**
+- `List[Tuple[str, bool]]`: List of (path, is_file) tuples for all files and directories found
+
+**Raises:**
+- `FileNotFoundError`: If the directory does not exist
+- `IOError`: If the directory cannot be read
+
+### File Metadata
+
+#### `stat(path: str) -> FileMetadata`
+
+Get file statistics asynchronously.
+
+**Returns:**
+- `FileMetadata`: File metadata object with size, timestamps, and type information
+
+**Raises:**
+- `FileNotFoundError`: If the path does not exist
+- `IOError`: If metadata cannot be retrieved
+
+#### `metadata(path: str) -> FileMetadata`
+
+Get file metadata asynchronously (alias for `stat`).
+
+#### `FileMetadata` Class
+
+File metadata structure (aiofiles.stat_result compatible).
+
+**Properties:**
+- `size` (int): File size in bytes
+- `is_file` (bool): True if path is a file
+- `is_dir` (bool): True if path is a directory
+- `modified` (float): Modification time as Unix timestamp
+- `accessed` (float): Access time as Unix timestamp
+- `created` (float): Creation time as Unix timestamp
+
+### Path Operations
+
+The `rapfiles.ospath` module provides synchronous path operations compatible with `aiofiles.ospath`:
+
+- `exists(path) -> bool`
+- `isfile(path) -> bool`
+- `isdir(path) -> bool`
+- `getsize(path) -> int`
+- `join(*paths) -> str`
+- `normpath(path) -> str`
+- `abspath(path) -> str`
+- `dirname(path) -> str`
+- `basename(path) -> str`
+- `splitext(path) -> Tuple[str, str]`
+- `split(path) -> Tuple[str, str]`
 
 ## Benchmarks
 
@@ -148,23 +444,30 @@ See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) 
 - [rapsqlite](https://github.com/eddiethedean/rapsqlite) - True async SQLite
 - [rapcsv](https://github.com/eddiethedean/rapcsv) - Streaming async CSV
 
-## Limitations (v0.0.2)
+## Current Status (v0.1.0)
 
-**Current limitations:**
-- Only basic `read_file()` and `write_file()` operations
-- No directory operations (listing, creation, deletion)
-- No file metadata operations (stat, permissions, timestamps)
-- No filesystem traversal or navigation
-- Not yet a drop-in replacement for `aiofiles` (goal for Phase 1)
-- Not designed for synchronous use cases
+**Phase 1 Complete ✅:**
+- ✅ File handle operations (`AsyncFile` class with `async with` support)
+- ✅ File operations: `read()`, `write()`, `readline()`, `readlines()`, `seek()`, `tell()`
+- ✅ Binary file operations: `read_file_bytes()`, `write_file_bytes()`
+- ✅ Append operations: `append_file()`
+- ✅ Directory operations: `create_dir()`, `create_dir_all()`, `remove_dir()`, `remove_dir_all()`, `list_dir()`
+- ✅ Path checking: `exists()`, `is_file()`, `is_dir()`
+- ✅ Directory traversal: `walk_dir()` for recursive directory walking
+- ✅ File metadata: `stat()`, `metadata()`, `FileMetadata` class
+- ✅ Path operations: `rapfiles.ospath` module (aiofiles.ospath compatible)
+- ✅ aiofiles compatibility: Drop-in replacement for basic `aiofiles` operations
+- ✅ Comprehensive test suite: 34+ tests covering all features
+- ✅ Type stubs: Complete `.pyi` files for IDE support
+- ✅ Type checking: Full mypy support with Python 3.8+ compatibility
+- ✅ Code quality: Ruff formatted and linted, clippy checked
 
-**Recent improvements (v0.0.2):**
-- ✅ Security fixes: Upgraded dependencies (pyo3 0.27, pyo3-async-runtimes 0.27)
-- ✅ Input validation: Added path validation (non-empty, no null bytes)
-- ✅ Improved error handling: Enhanced error messages with file path context
-- ✅ Type stubs: Added `.pyi` type stubs for better IDE support and type checking
+**Known Limitations:**
+- `buffering`, `encoding`, `errors`, `newline`, `closefd`, `opener` parameters accepted for API compatibility but not yet fully implemented
+- No file watching capabilities (planned for future phases)
+- No advanced I/O patterns like zero-copy (planned for future phases)
 
-**Roadmap**: See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for planned improvements. Our goal is to achieve drop-in replacement compatibility with `aiofiles` while providing true async performance with GIL-independent I/O.
+**Roadmap**: See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for planned improvements. Phase 1 (aiofiles compatibility) is complete. Future phases will add advanced features and optimizations.
 
 ## Contributing
 
