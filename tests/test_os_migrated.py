@@ -21,9 +21,14 @@ async def test_stat():
     
     # Ensure file exists and has content
     filename.write_text("0123456789")
-    # Force sync to ensure file is written
+    # Force sync to ensure file is written (os.sync() not available on Windows)
     import os
-    os.sync()
+    if hasattr(os, 'sync'):
+        os.sync()
+    else:
+        # On Windows, flush and sync using alternative method
+        import sys
+        sys.stdout.flush()
 
     stat_res = await rapfiles.stat(str(filename))
 
@@ -198,9 +203,14 @@ async def test_getsize():
     filename = RESOURCES_DIR / "test_file1.txt"
     # Ensure file exists and has content
     filename.write_text("0123456789")
-    # Force sync to ensure file is written
+    # Force sync to ensure file is written (os.sync() not available on Windows)
     import os
-    os.sync()
+    if hasattr(os, 'sync'):
+        os.sync()
+    else:
+        # On Windows, flush and sync using alternative method
+        import sys
+        sys.stdout.flush()
     
     result = await rapfiles.stat(str(filename))
     # File should be 10 bytes

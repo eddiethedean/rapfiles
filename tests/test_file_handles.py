@@ -69,9 +69,10 @@ async def test_readline():
     try:
         async with open(test_file, "r") as file:
             line1 = await file.readline()
-            assert line1 == "line 1\n"
+            # Normalize line endings for cross-platform compatibility
+            assert line1.rstrip('\r\n') == "line 1" and line1.endswith(('\n', '\r\n'))
             line2 = await file.readline()
-            assert line2 == "line 2\n"
+            assert line2.rstrip('\r\n') == "line 2" and line2.endswith(('\n', '\r\n'))
             line3 = await file.readline()
             assert line3 == "line 3"
     finally:
@@ -89,7 +90,10 @@ async def test_readlines():
     try:
         async with open(test_file, "r") as file:
             lines = await file.readlines()
-            assert lines == ["line 1\n", "line 2\n", "line 3\n"]
+            # Normalize line endings for cross-platform compatibility (Windows uses \r\n)
+            # Replace \r\n with \n to match expected format
+            normalized_lines = [line.replace('\r\n', '\n').replace('\r', '\n') for line in lines]
+            assert normalized_lines == ["line 1\n", "line 2\n", "line 3\n"]
     finally:
         if os.path.exists(test_file):
             os.unlink(test_file)

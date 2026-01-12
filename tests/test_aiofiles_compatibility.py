@@ -54,7 +54,8 @@ async def test_file_handle_methods():
             # Reset and test readline()
             await f.seek(0)
             line = await f.readline()
-            assert line == "line 1\n"
+            # Normalize line endings for cross-platform compatibility
+            assert line.rstrip('\r\n') == "line 1" and line.endswith(('\n', '\r\n'))
             
             # Test readlines()
             await f.seek(0)
