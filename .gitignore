@@ -106,3 +106,7 @@ dmypy.json
 
 # Profiling data
 .prof
+
+# Local testing artifacts
+test_artifacts/
+LICENSE.tmp
