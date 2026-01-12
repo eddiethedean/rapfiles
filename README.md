@@ -11,7 +11,7 @@
 
 `rapfiles` provides true async filesystem I/O operations for Python, backed by Rust and Tokio. Unlike libraries that wrap blocking I/O in `async` syntax, `rapfiles` guarantees that all I/O work executes **outside the Python GIL**, ensuring event loops never stall under load.
 
-**Roadmap Goal**: Achieve drop-in replacement compatibility with `aiofiles`, enabling seamless migration with true async performance. See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for details.
+**Roadmap Goal**: Achieve drop-in replacement compatibility with `aiofiles`, enabling seamless migration with true async performance. See [docs/ROADMAP.md](docs/ROADMAP.md) for details.
 
 ## Why `rap*`?
 
@@ -429,9 +429,17 @@ pip install rap-bench
 rap-bench detect rapfiles
 ```
 
+## Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) directory:
+- [Roadmap](docs/ROADMAP.md) - Detailed development plans
+- [Build and Test](docs/BUILD_AND_TEST.md) - Local development setup
+- [Release Notes](docs/PYPI_RELEASE_NOTES.md) - Version history and changes
+- [Security](SECURITY.md) - Security policy and reporting
+
 ## Roadmap
 
-See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for detailed development plans. Key goals include:
+See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed development plans. Key goals include:
 - Drop-in replacement for `aiofiles` (Phase 1)
 - Comprehensive filesystem operations (directories, metadata, permissions)
 - Advanced I/O patterns and zero-copy optimizations
@@ -467,11 +475,11 @@ See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) 
 - No file watching capabilities (planned for future phases)
 - No advanced I/O patterns like zero-copy (planned for future phases)
 
-**Roadmap**: See [ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/ROADMAP.md) for planned improvements. Phase 1 (aiofiles compatibility) is complete. Future phases will add advanced features and optimizations.
+**Roadmap**: See [docs/ROADMAP.md](docs/ROADMAP.md) for planned improvements. Phase 1 (aiofiles compatibility) is complete. Future phases will add advanced features and optimizations.
 
 ## Contributing
 
-Contributions are welcome! Please see our [contributing guidelines](https://github.com/eddiethedean/rapfiles/blob/main/CONTRIBUTING.md) (coming soon).
+Contributions are welcome! Please see our [contributing guidelines](https://github.com/eddiethedean/rapfiles/blob/main/docs/CONTRIBUTING.md) (coming soon).
 
 ## License
 
@@ -479,4 +487,4 @@ MIT
 
 ## Changelog
 
-See [CHANGELOG.md](https://github.com/eddiethedean/rapfiles/blob/main/CHANGELOG.md) (coming soon) for version history.
+See [docs/PYPI_RELEASE_NOTES.md](docs/PYPI_RELEASE_NOTES.md) for version history and release notes.

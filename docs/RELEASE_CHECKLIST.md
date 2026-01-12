@@ -44,7 +44,7 @@
    maturin build
    
    # Check metadata
-   python3 check_metadata.py
+   python3 scripts/check_metadata.py
    
    # Verify with twine (if installed)
    twine check dist/*

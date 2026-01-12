@@ -147,6 +147,6 @@ Phase 1 is considered complete when:
 
 ## 🔗 Related Files
 
-- `ROADMAP.md` - Overall project roadmap
-- `BUILD_AND_TEST.md` - Build and test instructions
+- `docs/ROADMAP.md` - Overall project roadmap
+- `docs/BUILD_AND_TEST.md` - Build and test instructions
 - `.github/workflows/publish.yml` - CI/CD configuration

@@ -7,6 +7,7 @@ name = "rapfiles"
 version = "0.1.0"
 description = "True async filesystem I/O — no fake async, no GIL stalls."
 readme = "README.md"
+documentation = "https://github.com/eddiethedean/rapfiles/tree/main/docs"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
@@ -33,7 +34,7 @@ features = ["pyo3/extension-module"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["."]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 
 [tool.mypy]

@@ -72,7 +72,7 @@ The following features are planned for future releases:
 ## Documentation
 
 - **README**: https://github.com/eddiethedean/rapfiles
-- **Roadmap**: See ROADMAP.md for planned features
+- **Roadmap**: See [ROADMAP.md](ROADMAP.md) for planned features
 - **API Docs**: Complete docstrings in code
 
 ## Testing
