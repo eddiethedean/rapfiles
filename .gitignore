@@ -109,4 +109,4 @@ dmypy.json
 
 # Local testing artifacts
 test_artifacts/
-LICENSE.tmp
+.LICENSE.backup
