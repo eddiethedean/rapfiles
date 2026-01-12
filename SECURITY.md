@@ -1,6 +1,6 @@
 # Security Audit Report - rapfiles
 
-**Version:** 0.0.2  
+**Version:** 0.1.0  
 **Last Audit Date:** January 10, 2026
 
 ## Security Status
@@ -13,7 +13,7 @@
 
 ## Resolved Vulnerabilities
 
-### ✅ Resolved: pyo3 0.20.3 → 0.27 (v0.0.2)
+### ✅ Resolved: pyo3 0.20.3 → 0.27 (v0.1.0)
 
 **Advisory ID:** RUSTSEC-2025-0020  
 **Severity:** Critical  
@@ -28,7 +28,7 @@
 - Migrated from pyo3-asyncio 0.20 to pyo3-async-runtimes 0.27 (required for pyo3 0.27 compatibility)
 - Updated code to use pyo3 0.27 API (Bound types, Python::attach, etc.)
 
-## Security Improvements (v0.0.2)
+## Security Improvements (v0.1.0)
 
 ### Input Validation
 - ✅ Path validation: All file paths are validated before use
