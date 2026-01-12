@@ -56,10 +56,16 @@ jobs:
     - name: Run tests
       shell: bash
       run: |
-        # Copy tests (including resources) and config to /tmp to use installed package
-        cp -r tests /tmp/
-        cp pyproject.toml /tmp/
-        cd /tmp
+        # Copy tests (including resources) and config to temp dir to use installed package
+        # Use cross-platform temp directory
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          TEMP_DIR="$TEMP"
+        else
+          TEMP_DIR="${TMPDIR:-/tmp}"
+        fi
+        cp -r tests "$TEMP_DIR/"
+        cp pyproject.toml "$TEMP_DIR/"
+        cd "$TEMP_DIR"
         python -m pytest tests/ -v
 
   lint:
