@@ -43,6 +43,7 @@ ENV/
 env.bak/
 venv.bak/
 .venv/
+venv*/
 
 # Environment variables
 .env
@@ -103,6 +104,9 @@ dmypy.json
 
 # pytype static type analyzer
 .pytype/
+
+# Ruff cache
+.ruff_cache/
 
 # Profiling data
 .prof
