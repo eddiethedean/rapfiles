@@ -23,6 +23,34 @@ fn validate_path(path: &str) -> PyResult<()> {
     Ok(())
 }
 
+/// Map Rust std::io::Error to appropriate Python exception with context.
+fn map_io_error(e: std::io::Error, path: &str, operation: &str) -> PyErr {
+    use std::io::ErrorKind;
+    
+    let error_msg = format!("Failed to {} {}: {}", operation, path, e);
+    
+    match e.kind() {
+        ErrorKind::NotFound => {
+            PyErr::new::<pyo3::exceptions::PyFileNotFoundError, _>(error_msg)
+        }
+        ErrorKind::PermissionDenied => {
+            PyErr::new::<pyo3::exceptions::PyPermissionError, _>(error_msg)
+        }
+        ErrorKind::AlreadyExists => {
+            PyErr::new::<pyo3::exceptions::PyFileExistsError, _>(error_msg)
+        }
+        ErrorKind::InvalidInput => {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>(error_msg)
+        }
+        ErrorKind::InvalidData => {
+            PyErr::new::<pyo3::exceptions::PyUnicodeDecodeError, _>(error_msg)
+        }
+        _ => {
+            PyErr::new::<pyo3::exceptions::PyIOError, _>(error_msg)
+        }
+    }
+}
+
 /// Python bindings for rapfiles - True async filesystem I/O.
 #[pymodule]
 fn _rapfiles(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -50,6 +78,9 @@ fn _rapfiles(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(metadata_async, m)?)?;
     m.add_class::<FileMetadata>()?;
     
+    // Directory traversal
+    m.add_function(wrap_pyfunction!(walk_dir_async, m)?)?;
+    
     Ok(())
 }
 
@@ -60,10 +91,7 @@ fn read_file_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
     let future = async move {
         let path_clone = path.clone();
         tokio::fs::read_to_string(&path).await.map_err(|e| {
-            PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to read file {}: {e}",
-                path_clone
-            ))
+            map_io_error(e, &path_clone, "read file")
         })
     };
     future_into_py(py, future)
@@ -76,10 +104,7 @@ fn write_file_async(py: Python<'_>, path: String, contents: String) -> PyResult<
     let future = async move {
         let path_clone = path.clone();
         tokio::fs::write(&path, contents).await.map_err(|e| {
-            PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to write file {}: {e}",
-                path_clone
-            ))
+            map_io_error(e, &path_clone, "write file")
         })
     };
     future_into_py(py, future)
@@ -777,6 +802,60 @@ fn stat_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
 #[pyfunction]
 fn metadata_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
     stat_async(py, path)
+}
+
+// Directory traversal
+
+/// Recursively walk a directory asynchronously.
+/// Returns a list of (path, is_file) tuples.
+#[pyfunction]
+fn walk_dir_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&path)?;
+    let future = async move {
+        let path_clone = path.clone();
+        let mut results = Vec::new();
+        
+        // Use a stack to traverse directories
+        let mut stack = vec![path_clone.clone()];
+        
+        while let Some(current_path) = stack.pop() {
+            let mut entries = match tokio::fs::read_dir(&current_path).await {
+                Ok(entries) => entries,
+                Err(e) => {
+                    // Skip directories we can't read
+                    continue;
+                }
+            };
+            
+            while let Some(entry) = entries.next_entry().await.map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                    "Failed to read directory entry in {}: {e}",
+                    current_path
+                ))
+            })? {
+                let entry_path = entry.path();
+                let path_str = entry_path.to_string_lossy().to_string();
+                
+                let metadata = match entry.metadata().await {
+                    Ok(m) => m,
+                    Err(_) => continue, // Skip entries we can't get metadata for
+                };
+                
+                let is_file = metadata.is_file();
+                let is_dir = metadata.is_dir();
+                
+                results.push((path_str.clone(), is_file));
+                
+                // Add subdirectories to the stack for traversal
+                if is_dir {
+                    stack.push(path_str);
+                }
+            }
+        }
+        
+        Ok(results)
+    };
+    future_into_py(py, future)
 }
 
 /// Open a file asynchronously (aiofiles.open() compatible).

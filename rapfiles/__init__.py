@@ -22,6 +22,7 @@ try:
         stat_async,
         metadata_async,
         FileMetadata,
+        walk_dir_async,
     )
 except ImportError:
     # Try alternative import path
@@ -49,6 +50,9 @@ except ImportError:
         )
 
 __version__: str = "0.0.2"
+
+# Import ospath module for aiofiles compatibility
+from rapfiles import ospath  # noqa: F401
 __all__: List[str] = [
     # File operations
     "read_file_async",
@@ -78,6 +82,8 @@ __all__: List[str] = [
     "stat",
     "metadata",
     "FileMetadata",
+    # Directory traversal
+    "walk_dir",
 ]
 
 
@@ -157,6 +163,20 @@ async def stat(path: str) -> "FileMetadata":
 async def metadata(path: str) -> "FileMetadata":
     """Get file metadata asynchronously (alias for stat)."""
     return await metadata_async(path)
+
+
+# Directory traversal
+async def walk_dir(path: str) -> list[tuple[str, bool]]:
+    """
+    Recursively walk a directory asynchronously.
+    
+    Args:
+        path: Directory path to walk
+        
+    Returns:
+        List of (path, is_file) tuples for all files and directories found
+    """
+    return await walk_dir_async(path)
 
 
 # aiofiles.open() compatible function
