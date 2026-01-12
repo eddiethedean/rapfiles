@@ -50,9 +50,6 @@ except ImportError:
         )
 
 __version__: str = "0.0.2"
-
-# Import ospath module for aiofiles compatibility
-from rapfiles import ospath  # noqa: F401
 __all__: List[str] = [
     # File operations
     "read_file_async",
