@@ -56,8 +56,9 @@ jobs:
     - name: Run tests
       shell: bash
       run: |
-        # Copy tests (including resources) to /tmp to use installed package
+        # Copy tests (including resources) and config to /tmp to use installed package
         cp -r tests /tmp/
+        cp pyproject.toml /tmp/
         cd /tmp
         python -m pytest tests/ -v
 
