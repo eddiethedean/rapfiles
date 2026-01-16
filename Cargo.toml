@@ -1,6 +1,6 @@
 [package]
 name = "rapfiles"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["RAP Project"]
 description = "True async filesystem I/O — no fake async, no GIL stalls."
