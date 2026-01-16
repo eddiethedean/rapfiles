@@ -35,7 +35,7 @@ See the [rap-manifesto](https://github.com/eddiethedean/rap-manifesto) for philo
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.8+ (including Python 3.13)
 - Rust 1.70+ (for building from source)
 
 ## Installation
@@ -452,7 +452,21 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed development plans. Key goals
 - [rapsqlite](https://github.com/eddiethedean/rapsqlite) - True async SQLite
 - [rapcsv](https://github.com/eddiethedean/rapcsv) - Streaming async CSV
 
-## Current Status (v0.1.0)
+## Changelog
+
+### v0.1.1 (2026-01-16)
+
+**Python 3.13 Support:**
+- ✅ Added Python 3.13 classifier to pyproject.toml
+- ✅ Updated CI/CD workflows to test for Python 3.13
+
+**Compatibility:**
+- Python 3.8 through 3.13 supported
+- All platforms: Ubuntu (x86-64, aarch64), macOS (aarch64, x86-64), Windows (x86-64, aarch64)
+
+### v0.1.0 (2025-01-12)
+
+## Current Status (v0.1.1)
 
 **Phase 1 Complete ✅:**
 - ✅ File handle operations (`AsyncFile` class with `async with` support)
@@ -485,6 +499,4 @@ Contributions are welcome! Please see our [contributing guidelines](https://gith
 
 MIT
 
-## Changelog
-
-See [docs/PYPI_RELEASE_NOTES.md](docs/PYPI_RELEASE_NOTES.md) for version history and release notes.
+For detailed release notes, see [docs/PYPI_RELEASE_NOTES.md](docs/PYPI_RELEASE_NOTES.md).

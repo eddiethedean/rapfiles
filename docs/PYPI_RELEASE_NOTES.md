@@ -1,6 +1,26 @@
-# PyPI Release Notes - rapfiles v0.1.0
+# PyPI Release Notes - rapfiles
 
 ## Release Information
+
+**Current Version**: 0.1.1  
+**Latest Release Date**: 2026-01-16  
+**Status**: Phase 1 Complete - Ready for Production Use
+
+---
+
+## v0.1.1 (2026-01-16)
+
+### Python 3.13 Support
+- ✅ Added Python 3.13 classifier to pyproject.toml
+- ✅ Updated CI/CD workflows to test for Python 3.13
+
+### Compatibility
+- Python 3.8 through 3.13 supported
+- All platforms: Ubuntu (x86-64, aarch64), macOS (aarch64, x86-64), Windows (x86-64, aarch64)
+
+---
+
+## v0.1.0 (2025-01-12)
 
 **Version**: 0.1.0  
 **Release Date**: 2025-01-12  

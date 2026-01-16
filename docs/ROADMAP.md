@@ -4,7 +4,7 @@ This roadmap outlines the development plan for `rapfiles`, aligned with the [RAP
 
 ## Current Status
 
-**Current Version (v0.1.0)** - **Phase 1 Complete ✅**
+**Current Version (v0.1.1)** - **Phase 1 Complete ✅**
 
 **Phase 1 Achievements:**
 - ✅ **File handle operations**: `AsyncFile` class with `async with` support
