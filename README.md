@@ -35,7 +35,7 @@ See the [rap-manifesto](https://github.com/eddiethedean/rap-manifesto) for philo
 
 ## Requirements
 
-- Python 3.8+ (including Python 3.13)
+- Python 3.8+ (including Python 3.13 and 3.14)
 - Rust 1.70+ (for building from source)
 
 ## Installation
@@ -456,12 +456,17 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed development plans. Key goals
 
 ### v0.1.1 (2026-01-16)
 
+**Python 3.14 Support:**
+- ✅ Added Python 3.14 classifier to pyproject.toml
+- ✅ Updated CI/CD workflows to test for Python 3.14
+- ✅ Added ABI3 forward compatibility for Python 3.14
+
 **Python 3.13 Support:**
 - ✅ Added Python 3.13 classifier to pyproject.toml
 - ✅ Updated CI/CD workflows to test for Python 3.13
 
 **Compatibility:**
-- Python 3.8 through 3.13 supported
+- Python 3.8 through 3.14 supported
 - All platforms: Ubuntu (x86-64, aarch64), macOS (aarch64, x86-64), Windows (x86-64, aarch64)
 
 ### v0.1.0 (2025-01-12)

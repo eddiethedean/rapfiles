@@ -70,7 +70,7 @@ except ImportError:
             "Could not import _rapfiles. Make sure rapfiles is built with maturin."
         )
 
-__version__: str = "0.1.1"
+__version__: str = "0.1.2"
 __all__: List[str] = [
     # File operations
     "read_file_async",
