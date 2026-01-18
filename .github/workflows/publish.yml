@@ -272,9 +272,83 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: ubuntu-latest
+            python-version: '3.14'
+          - os: macos-latest
+            python-version: '3.11'
+          - os: macos-latest
+            python-version: '3.14'
+          - os: windows-latest
+            python-version: '3.11'
+          - os: windows-latest
+            python-version: '3.13'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install maturin
+        run: pip install maturin
+
+      - name: Build package (Linux)
+        if: runner.os == 'Linux'
+        run: python -m maturin build --release --skip-auditwheel
+
+      - name: Build package (macOS/Windows)
+        if: runner.os != 'Linux'
+        env:
+          PYO3_USE_ABI3_FORWARD_COMPATIBILITY: ${{ (matrix.python-version == '3.13' || matrix.python-version == '3.14') && '1' || '' }}
+        run: python -m maturin build --release
+
+      - name: Install package
+        shell: bash
+        run: pip install target/wheels/rapfiles-*.whl --force-reinstall
+
+      - name: Install test dependencies
+        shell: bash
+        run: pip install pytest pytest-asyncio aiofiles
+
+      - name: Test package import
+        shell: bash
+        run: |
+          cd /tmp && python -c "import rapfiles; print('Version:', rapfiles.__version__)"
+
+      - name: Run tests
+        shell: bash
+        run: |
+          # Copy tests (including resources) and config to temp dir to use installed package
+          # Use cross-platform temp directory
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            TEMP_DIR="$TEMP"
+          else
+            TEMP_DIR="${TMPDIR:-/tmp}"
+          fi
+          cp -r tests "$TEMP_DIR/"
+          cp pyproject.toml "$TEMP_DIR/"
+          cd "$TEMP_DIR"
+          python -m pytest tests/ -v
+
   publish:
     name: Publish to PyPI
-    needs: [build-wheels, build-sdist]
+    needs: [build-wheels, build-sdist, test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
