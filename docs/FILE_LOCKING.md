@@ -12,10 +12,12 @@ from rapfiles import lock_file, write_file
 
 async def main():
     # Exclusive lock for writing
+    # Note: On Windows, write after releasing the lock (see Windows Considerations below)
     async with lock_file("data.txt", exclusive=True) as lock:
-        await write_file("data.txt", "Exclusive access")
-        # Lock automatically released when exiting context
-    # File is now unlocked
+        # Lock acquired - other processes cannot acquire exclusive lock
+        pass
+    # Lock released - now write safely on all platforms
+    await write_file("data.txt", "Exclusive access")
 
 asyncio.run(main())
 ```
@@ -62,19 +64,20 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from rapfiles import lock_file, read_file, write_file
+from rapfiles import lock_file, read_file, atomic_write_file
 
 async def update_counter():
-    """Safely increment a counter in a file."""
+    """Safely increment a counter in a file (cross-platform)."""
     async with lock_file("counter.txt", exclusive=True):
         # Read current value
         try:
             current = int(await read_file("counter.txt"))
         except FileNotFoundError:
             current = 0
-        
-        # Write incremented value
-        await write_file("counter.txt", str(current + 1))
+    
+    # Release lock before writing (required on Windows)
+    # Use atomic_write_file for true atomicity across all platforms
+    await atomic_write_file("counter.txt", str(current + 1))
 
 # Multiple coroutines can safely update the counter
 async def main():
@@ -101,11 +104,13 @@ async def reader(file_path: str):
         await asyncio.sleep(0.1)  # Simulate reading
 
 async def writer(file_path: str, data: str):
-    """Only one writer at a time."""
+    """Only one writer at a time (cross-platform)."""
     async with lock_file(file_path, exclusive=True):
-        await write_file(file_path, data)
-        print(f"Wrote: {data}")
-        await asyncio.sleep(0.1)  # Simulate writing
+        # Lock acquired - only this writer can proceed
+        pass
+    # Lock released - now write safely on all platforms
+    await write_file(file_path, data)
+    print(f"Wrote: {data}")
 
 async def main():
     file_path = "shared.txt"
@@ -133,6 +138,61 @@ asyncio.run(main())
 - **Automatic Release**: Locks are automatically released when exiting the `async with` block.
 - **File Creation**: If the file doesn't exist, it will be created when acquiring the lock.
 - **Cross-Platform**: Works on Unix-like systems and Windows.
+
+## Windows Considerations
+
+**⚠️ Important:** On Windows, file locking behavior differs from Unix systems. While holding an exclusive lock, you **cannot** write to the file through a different file handle (such as using `write_file()`, which opens a new handle).
+
+### Windows-Compatible Pattern
+
+On Windows, release the lock before writing:
+
+```python
+import asyncio
+from rapfiles import lock_file, read_file, write_file
+
+async def update_counter_windows_safe():
+    """Windows-compatible: Release lock before writing."""
+    async with lock_file("counter.txt", exclusive=True):
+        # Read while holding lock (this works on Windows)
+        try:
+            current = int(await read_file("counter.txt"))
+        except FileNotFoundError:
+            current = 0
+    
+    # Lock released, now write safely
+    await write_file("counter.txt", str(current + 1))
+```
+
+Or use atomic operations which don't require holding the lock during write:
+
+```python
+import asyncio
+from rapfiles import lock_file, read_file, atomic_write_file
+
+async def update_counter_atomic():
+    """Use atomic_write_file - works on all platforms."""
+    async with lock_file("counter.txt", exclusive=True):
+        # Read current value
+        try:
+            current = int(await read_file("counter.txt"))
+        except FileNotFoundError:
+            current = 0
+        
+        # Atomic write uses the same locking mechanism internally
+        await atomic_write_file("counter.txt", str(current + 1))
+```
+
+### What Works on All Platforms
+
+- ✅ Acquiring and releasing locks
+- ✅ Reading files while holding a lock (through different handles)
+- ✅ Coordinating access between processes/coroutines
+- ✅ Using `atomic_write_file()` while holding a lock (it handles this internally)
+
+### What Only Works on Unix
+
+- ❌ Writing through a different file handle (like `write_file()`) while holding an exclusive lock
 
 ## API Reference
 

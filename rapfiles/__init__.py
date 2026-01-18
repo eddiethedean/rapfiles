@@ -1160,11 +1160,25 @@ def lock_file(path: str, exclusive: bool = True) -> _LockContextManager:
 
     Example:
         ```python
+        # Cross-platform pattern: Release lock before writing
         async with lock_file("file.txt", exclusive=True) as lock:
-            # File is locked here - only this process can write
-            await write_file("file.txt", "content")
-        # Lock is automatically released when exiting the context
+            # File is locked here - only this process can acquire exclusive lock
+            # Read operations work on all platforms
+            pass
+        # Lock released - now write safely (required on Windows)
+        await write_file("file.txt", "content")
+        
+        # Alternative: Use atomic_write_file which handles locking internally
+        async with lock_file("file.txt", exclusive=True):
+            # Read and prepare data while holding lock
+            pass
+        await atomic_write_file("file.txt", "content")
         ```
+        
+    Note:
+        On Windows, you cannot write to a file through a different handle
+        (like `write_file()`) while holding an exclusive lock. Release the
+        lock first, or use `atomic_write_file()` for atomic operations.
 
     See Also:
         - `lock_file_shared()`: Convenience function for shared locks.
