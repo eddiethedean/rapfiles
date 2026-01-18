@@ -4,7 +4,7 @@ import pytest
 import tempfile
 import os
 
-from rapfiles import stat, metadata, FileMetadata
+from rapfiles import stat, metadata, FileMetadata  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio

@@ -86,21 +86,21 @@ async def test_ospath_compatibility():
 
     try:
         # Test ospath functions
-        assert rapfiles.ospath.exists(test_file) is True
-        assert rapfiles.ospath.isfile(test_file) is True
-        assert rapfiles.ospath.isdir(test_file) is False
-        assert rapfiles.ospath.getsize(test_file) > 0
+        assert rapfiles.ospath.exists(test_file) is True  # type: ignore[attr-defined]
+        assert rapfiles.ospath.isfile(test_file) is True  # type: ignore[attr-defined]
+        assert rapfiles.ospath.isdir(test_file) is False  # type: ignore[attr-defined]
+        assert rapfiles.ospath.getsize(test_file) > 0  # type: ignore[attr-defined]
 
         # Test path operations
-        joined = rapfiles.ospath.join("dir", "file.txt")
+        joined = rapfiles.ospath.join("dir", "file.txt")  # type: ignore[attr-defined]
         assert "dir" in joined
         assert "file.txt" in joined
 
-        abspath = rapfiles.ospath.abspath(test_file)
+        abspath = rapfiles.ospath.abspath(test_file)  # type: ignore[attr-defined]
         assert os.path.isabs(abspath)
 
-        rapfiles.ospath.dirname(test_file)
-        basename = rapfiles.ospath.basename(test_file)
+        rapfiles.ospath.dirname(test_file)  # type: ignore[attr-defined]
+        basename = rapfiles.ospath.basename(test_file)  # type: ignore[attr-defined]
         assert basename in test_file
     finally:
         if os.path.exists(test_file):

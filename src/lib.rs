@@ -225,9 +225,7 @@ fn read_file_bytes_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyA
     let future = async move {
         let path_clone = path.clone();
         tokio::fs::read(&path).await.map_err(|e| {
-            PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to read file {path_clone}: {e}"
-            ))
+            map_io_error(e, &path_clone, "read file")
         })
     };
     future_into_py(py, future)
@@ -1439,8 +1437,11 @@ fn atomic_write_file_async(py: Python<'_>, path: String, contents: String) -> Py
         
         // Atomically replace target file
         tokio::fs::rename(&temp_path, &path).await.map_err(|e| {
-            // Clean up temp file on error (intentionally drop future in sync context)
-            drop(tokio::fs::remove_file(&temp_path));
+            // Clean up temp file on error (spawn cleanup task)
+            let temp_cleanup = temp_path.clone();
+            tokio::spawn(async move {
+                let _ = tokio::fs::remove_file(&temp_cleanup).await;
+            });
             map_io_error(e, &path_clone, "atomically write file")
         })
     };
@@ -1500,8 +1501,11 @@ fn atomic_write_file_bytes_async<'a>(
         
         // Atomically replace target file
         tokio::fs::rename(&temp_path, &path).await.map_err(|e| {
-            // Clean up temp file on error (intentionally drop future in sync context)
-            drop(tokio::fs::remove_file(&temp_path));
+            // Clean up temp file on error (spawn cleanup task)
+            let temp_cleanup = temp_path.clone();
+            tokio::spawn(async move {
+                let _ = tokio::fs::remove_file(&temp_cleanup).await;
+            });
             map_io_error(e, &path_clone, "atomically write file")
         })
     };
@@ -1561,15 +1565,21 @@ fn atomic_move_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<
                 
                 // Atomically replace destination
                 tokio::fs::rename(&temp_path, &dst).await.map_err(|e| {
-                    // Clean up temp file on error (intentionally drop future in sync context)
-                    drop(tokio::fs::remove_file(&temp_path));
+                    // Clean up temp file on error (spawn cleanup task)
+                    let temp_cleanup = temp_path.clone();
+                    tokio::spawn(async move {
+                        let _ = tokio::fs::remove_file(&temp_cleanup).await;
+                    });
                     map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "atomically move file")
                 })?;
                 
-                // Remove source file
-                tokio::fs::remove_file(&src).await.map_err(|e| {
-                    map_io_error(e, &src_clone, "remove source file")
-                })
+                // Remove source file (best effort - move already succeeded)
+                if let Err(e) = tokio::fs::remove_file(&src).await {
+                    // Log warning but don't fail - the move was successful
+                    // The source file removal failure is logged but doesn't affect the operation
+                    eprintln!("Warning: Failed to remove source file after atomic move {src_clone} -> {dst_clone}: {e}");
+                }
+                Ok(())
             }
             Err(e) => Err(map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "atomically move file")),
         }
@@ -1703,7 +1713,7 @@ fn lock_file_async(py: Python<'_>, path: String, exclusive: bool) -> PyResult<Bo
             move || {
                 std::fs::OpenOptions::new()
                     .create(true)
-                    .truncate(true)
+                    .truncate(false)
                     .read(true)
                     .write(true)
                     .open(&path)

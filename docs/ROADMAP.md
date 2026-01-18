@@ -20,7 +20,7 @@ This roadmap outlines the development plan for `rapfiles`, aligned with the [RAP
 - ✅ **Type stubs**: Complete `.pyi` files for IDE support
 - ✅ **Type checking**: Full mypy support with Python 3.8+ compatibility
 - ✅ **Code quality**: Ruff formatted and linted, clippy checked
-- ✅ **Documentation**: Complete docstrings and API documentation
+- ✅ **Documentation**: Complete docstrings with examples, cross-references, and comprehensive API documentation
 
 **Phase 2 Achievements:**
 - ✅ **File manipulation operations**: `copy_file()`, `move_file()`, `rename()`, `remove_file()`
@@ -29,12 +29,20 @@ This roadmap outlines the development plan for `rapfiles`, aligned with the [RAP
 - ✅ **File locking**: `lock_file()`, `lock_file_shared()` with `FileLock` class
 - ✅ **Batch operations**: `read_files()`, `write_files()`, `copy_files()` with concurrent execution
 - ✅ **Comprehensive testing**: 188+ tests covering all Phase 1 and Phase 2 features
+- ✅ **Enhanced documentation**: Comprehensive docstrings with examples, cross-references, and detailed parameter documentation across all modules
 
 **Remaining Limitations:**
 - `buffering`, `encoding`, `errors`, `newline`, `closefd`, `opener` parameters accepted for API compatibility but not yet fully implemented
 - No streaming operations for large files (planned for Phase 3)
 - No file watching capabilities (planned for Phase 3)
 - No advanced I/O patterns like zero-copy (planned for Phase 3)
+
+**Known Improvements Needed:**
+- ⏳ Error handling consistency across all functions (standardize to `map_io_error()`)
+- ⏳ Enhanced path validation (platform-specific length and character checks)
+- ⏳ Temporary file naming improvements (avoid collisions with process ID/UUID)
+- ⏳ Atomic operation cleanup on partial write failures
+- ⏳ File locking documentation and robustness improvements
 
 **Pending Validation:**
 - ⏳ Fake Async Detector validation under load
@@ -133,7 +141,7 @@ Focus: Expand core filesystem operations beyond basic read/write to establish a 
 - ⏳ **Pass 100% of aiofiles test suite** as drop-in replacement validation (pending)
 - ✅ Drop-in replacement compatibility tests (can swap `aiofiles` → `rapfiles` without code changes)
 - ⏳ Benchmark comparison with existing async file I/O libraries (pending)
-- ✅ Documentation improvements including migration guide (docstrings and README complete)
+- ✅ Documentation improvements including migration guide (comprehensive docstrings with examples and cross-references, README complete)
 
 ## Phase 2 — Expansion ✅ COMPLETE
 
@@ -191,6 +199,28 @@ Focus: Advanced filesystem features, performance optimizations, and broader comp
   - Memory-efficient batch processing
   - Backpressure handling
   - Progress callbacks for long operations
+
+### Error Handling & Code Quality Improvements
+
+- **Error handling consistency** ⏳
+  - Standardize error handling across all functions to use `map_io_error()` helper
+  - Improve error context in all operations (operation name and file path)
+  - Functions needing updates: `append_file_async`, `create_dir_async`, `create_dir_all_async`, `remove_dir_async`, `remove_dir_all_async`, `list_dir_async`, `is_file_async`, `is_dir_async`, `stat_async`, `walk_dir_async`
+
+- **Path validation enhancements** ⏳
+  - Add maximum path length validation (platform-specific)
+  - Add invalid character validation (platform-specific)
+  - Improve path traversal detection (while preserving relative path support)
+
+- **Atomic operation improvements** ⏳
+  - Improve temporary file naming to avoid collisions (add process ID or UUID suffix)
+  - Add cleanup handling for partial write failures in atomic operations
+  - Document lock file behavior (lock file creation/truncation)
+
+- **File locking robustness** ⏳
+  - Evaluate race condition window between file open and lock acquisition
+  - Consider `create_new(true)` alternative for lock file creation
+  - Improve documentation on lock file behavior and file modification
 
 ### Performance & Optimization
 

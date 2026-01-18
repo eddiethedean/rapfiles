@@ -9,15 +9,12 @@ from typing import (
     Dict,
 )
 
-from ._rapfiles import FileMetadata as _FileMetadata
+from ._rapfiles import FileMetadata
 
 __version__: str
 
-# Re-export FileMetadata for type checking  
+# Re-export FileMetadata for type checking
 __all__: List[str]
-
-# Explicit re-export for mypy
-FileMetadata: type[_FileMetadata]  # type: ignore[misc]
 
 # Convenience async functions
 async def read_file(path: str) -> str: ...
@@ -58,7 +55,9 @@ async def atomic_write_file_bytes(path: str, contents: bytes) -> None: ...
 async def atomic_move_file(src: str, dst: str) -> None: ...
 
 # File locking
-def lock_file(path: str, exclusive: bool = ...) -> Any: ...  # Returns _LockContextManager
+def lock_file(
+    path: str, exclusive: bool = ...
+) -> Any: ...  # Returns _LockContextManager
 def lock_file_shared(path: str) -> Any: ...  # Returns _LockContextManager
 
 # Batch operations
@@ -95,4 +94,3 @@ class AsyncFile:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> Optional[bool]: ...
-

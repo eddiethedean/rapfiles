@@ -420,14 +420,16 @@ class ParityTester:
             os_getsize = os.path.getsize(str(test_file))
 
             # Test rapfiles.ospath
-            rapfiles_exists = rapfiles.ospath.exists(str(test_file))
-            rapfiles_isfile = rapfiles.ospath.isfile(str(test_file))
-            rapfiles_getsize = rapfiles.ospath.getsize(str(test_file))
+            rapfiles_exists = rapfiles.ospath.exists(str(test_file))  # type: ignore[attr-defined]
+            rapfiles_isfile = rapfiles.ospath.isfile(str(test_file))  # type: ignore[attr-defined]
+            rapfiles_getsize = rapfiles.ospath.getsize(str(test_file))  # type: ignore[attr-defined]
 
             success = (
-                os_exists == rapfiles_exists == True and
-                os_isfile == rapfiles_isfile == True and
-                os_getsize == rapfiles_getsize
+                os_exists is True
+                and rapfiles_exists is True
+                and os_isfile is True
+                and rapfiles_isfile is True
+                and os_getsize == rapfiles_getsize
             )
             return success, f"exists: os={os_exists}/rapfiles={rapfiles_exists}, isfile: os={os_isfile}/rapfiles={rapfiles_isfile}, getsize: os={os_getsize}/rapfiles={rapfiles_getsize}"
         except AttributeError as e:
