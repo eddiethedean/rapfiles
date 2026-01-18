@@ -46,7 +46,7 @@ jobs:
 
     - name: Install test dependencies
       shell: bash
-      run: pip install pytest pytest-asyncio
+      run: pip install pytest pytest-asyncio aiofiles
 
     - name: Test package import
       shell: bash

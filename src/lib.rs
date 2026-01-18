@@ -224,9 +224,9 @@ fn read_file_bytes_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyA
     validate_path(&path)?;
     let future = async move {
         let path_clone = path.clone();
-        tokio::fs::read(&path).await.map_err(|e| {
-            map_io_error(e, &path_clone, "read file")
-        })
+        tokio::fs::read(&path)
+            .await
+            .map_err(|e| map_io_error(e, &path_clone, "read file"))
     };
     future_into_py(py, future)
 }
@@ -1183,21 +1183,25 @@ fn move_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<Bound<'
     let future = async move {
         let src_clone = src.clone();
         let dst_clone = dst.clone();
-        
+
         // Try rename first (atomic on same filesystem)
         match tokio::fs::rename(&src, &dst).await {
             Ok(_) => Ok(()),
             Err(e) if e.kind() == std::io::ErrorKind::CrossesDevices => {
                 // Cross-device move: copy then remove
-                tokio::fs::copy(&src, &dst)
-                    .await
-                    .map_err(|e| map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "copy file"))?;
+                tokio::fs::copy(&src, &dst).await.map_err(|e| {
+                    map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "copy file")
+                })?;
                 tokio::fs::remove_file(&src)
                     .await
                     .map_err(|e| map_io_error(e, &src_clone, "remove file"))?;
                 Ok(())
             }
-            Err(e) => Err(map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "move file")),
+            Err(e) => Err(map_io_error(
+                e,
+                &format!("{src_clone} -> {dst_clone}"),
+                "move file",
+            )),
         }
     };
     future_into_py(py, future)
@@ -1228,7 +1232,7 @@ fn remove_file_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>>
     validate_path(&path)?;
     let future = async move {
         let path_clone = path.clone();
-        
+
         // Check if it's a directory first to provide a better error message
         let metadata = tokio::fs::metadata(&path).await;
         if let Ok(md) = metadata {
@@ -1238,7 +1242,7 @@ fn remove_file_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>>
                 )));
             }
         }
-        
+
         tokio::fs::remove_file(&path)
             .await
             .map_err(|e| map_io_error(e, &path_clone, "remove file"))
@@ -1273,14 +1277,21 @@ fn hard_link_async(py: Python<'_>, src: String, dst: String) -> PyResult<Bound<'
     let future = async move {
         let src_clone = src.clone();
         let dst_clone = dst.clone();
-        
+
         // tokio::fs::hard_link is not available, use std::fs::hard_link in blocking mode
         tokio::task::spawn_blocking(move || {
-            std::fs::hard_link(&src, &dst)
-                .map_err(|e| map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "create hard link"))
+            std::fs::hard_link(&src, &dst).map_err(|e| {
+                map_io_error(
+                    e,
+                    &format!("{src_clone} -> {dst_clone}"),
+                    "create hard link",
+                )
+            })
         })
         .await
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to create hard link: {e}")))?
+        .map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to create hard link: {e}"))
+        })?
     };
     future_into_py(py, future)
 }
@@ -1311,37 +1322,45 @@ fn symlink_async(py: Python<'_>, src: String, dst: String) -> PyResult<Bound<'_,
     let future = async move {
         let src_clone = src.clone();
         let dst_clone = dst.clone();
-        
+
         // tokio::fs::symlink has different behavior on Windows vs Unix
         #[cfg(unix)]
         {
             use tokio::fs::symlink;
-            symlink(&src, &dst)
-                .await
-                .map_err(|e| map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "create symlink"))
+            symlink(&src, &dst).await.map_err(|e| {
+                map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "create symlink")
+            })
         }
-        
+
         #[cfg(windows)]
         {
             // On Windows, symlink requires checking if src is a file or directory
             use tokio::fs;
             let metadata = fs::symlink_metadata(&src).await;
             match metadata {
-                Ok(md) if md.is_dir() => {
-                    fs::symlink_dir(&src, &dst)
-                        .await
-                        .map_err(|e| map_io_error(e, &format!("{} -> {}", src_clone, dst_clone), "create symlink"))
-                }
-                Ok(_) => {
-                    fs::symlink_file(&src, &dst)
-                        .await
-                        .map_err(|e| map_io_error(e, &format!("{} -> {}", src_clone, dst_clone), "create symlink"))
-                }
+                Ok(md) if md.is_dir() => fs::symlink_dir(&src, &dst).await.map_err(|e| {
+                    map_io_error(
+                        e,
+                        &format!("{} -> {}", src_clone, dst_clone),
+                        "create symlink",
+                    )
+                }),
+                Ok(_) => fs::symlink_file(&src, &dst).await.map_err(|e| {
+                    map_io_error(
+                        e,
+                        &format!("{} -> {}", src_clone, dst_clone),
+                        "create symlink",
+                    )
+                }),
                 Err(_) => {
                     // If source doesn't exist, default to file symlink on Windows
-                    fs::symlink_file(&src, &dst)
-                        .await
-                        .map_err(|e| map_io_error(e, &format!("{} -> {}", src_clone, dst_clone), "create symlink"))
+                    fs::symlink_file(&src, &dst).await.map_err(|e| {
+                        map_io_error(
+                            e,
+                            &format!("{} -> {}", src_clone, dst_clone),
+                            "create symlink",
+                        )
+                    })
                 }
             }
         }
@@ -1376,12 +1395,14 @@ fn canonicalize_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>
         let canonical = tokio::fs::canonicalize(&path)
             .await
             .map_err(|e| map_io_error(e, &path_clone, "canonicalize path"))?;
-        
+
         canonical
             .to_str()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyUnicodeDecodeError, _>(
-                "Canonicalized path contains invalid UTF-8"
-            ))
+            .ok_or_else(|| {
+                PyErr::new::<pyo3::exceptions::PyUnicodeDecodeError, _>(
+                    "Canonicalized path contains invalid UTF-8",
+                )
+            })
             .map(|s| s.to_string())
     };
     future_into_py(py, future)
@@ -1411,30 +1432,34 @@ fn canonicalize_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>
 /// Returns `PyIOError` if the file cannot be written, `PyPermissionError`
 /// if write permission is denied, or `PyValueError` if the path is invalid.
 #[pyfunction]
-fn atomic_write_file_async(py: Python<'_>, path: String, contents: String) -> PyResult<Bound<'_, PyAny>> {
+fn atomic_write_file_async(
+    py: Python<'_>,
+    path: String,
+    contents: String,
+) -> PyResult<Bound<'_, PyAny>> {
     validate_path(&path)?;
     let future = async move {
         use std::path::Path;
         let path_clone = path.clone();
-        
+
         let file_path = Path::new(&path);
         let dir = file_path.parent().ok_or_else(|| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>("Path has no parent directory")
         })?;
-        
+
         // Create temporary file in same directory
         let file_name = file_path.file_name().ok_or_else(|| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>("Path has no file name")
         })?;
-        
+
         let temp_path = dir.join(format!(".{}.tmp", file_name.to_string_lossy()));
         let temp_path_str = temp_path.to_string_lossy().to_string();
-        
+
         // Write to temporary file
-        tokio::fs::write(&temp_path, contents).await.map_err(|e| {
-            map_io_error(e, &temp_path_str, "write temporary file")
-        })?;
-        
+        tokio::fs::write(&temp_path, contents)
+            .await
+            .map_err(|e| map_io_error(e, &temp_path_str, "write temporary file"))?;
+
         // Atomically replace target file
         tokio::fs::rename(&temp_path, &path).await.map_err(|e| {
             // Clean up temp file on error (spawn cleanup task)
@@ -1480,25 +1505,25 @@ fn atomic_write_file_bytes_async<'a>(
     let future = async move {
         use std::path::Path;
         let path_clone = path.clone();
-        
+
         let file_path = Path::new(&path);
         let dir = file_path.parent().ok_or_else(|| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>("Path has no parent directory")
         })?;
-        
+
         // Create temporary file in same directory
         let file_name = file_path.file_name().ok_or_else(|| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>("Path has no file name")
         })?;
-        
+
         let temp_path = dir.join(format!(".{}.tmp", file_name.to_string_lossy()));
         let temp_path_str = temp_path.to_string_lossy().to_string();
-        
+
         // Write to temporary file
-        tokio::fs::write(&temp_path, bytes).await.map_err(|e| {
-            map_io_error(e, &temp_path_str, "write temporary file")
-        })?;
-        
+        tokio::fs::write(&temp_path, bytes)
+            .await
+            .map_err(|e| map_io_error(e, &temp_path_str, "write temporary file"))?;
+
         // Atomically replace target file
         tokio::fs::rename(&temp_path, &path).await.map_err(|e| {
             // Clean up temp file on error (spawn cleanup task)
@@ -1540,7 +1565,7 @@ fn atomic_move_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<
     let future = async move {
         let src_clone = src.clone();
         let dst_clone = dst.clone();
-        
+
         // Try rename first (atomic on same filesystem)
         match tokio::fs::rename(&src, &dst).await {
             Ok(_) => Ok(()),
@@ -1549,20 +1574,24 @@ fn atomic_move_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<
                 use std::path::Path;
                 let dst_path = Path::new(&dst);
                 let dir = dst_path.parent().ok_or_else(|| {
-                    PyErr::new::<pyo3::exceptions::PyValueError, _>("Destination path has no parent directory")
+                    PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        "Destination path has no parent directory",
+                    )
                 })?;
-                
+
                 let file_name = dst_path.file_name().ok_or_else(|| {
-                    PyErr::new::<pyo3::exceptions::PyValueError, _>("Destination path has no file name")
+                    PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        "Destination path has no file name",
+                    )
                 })?;
-                
+
                 let temp_path = dir.join(format!(".{}.tmp", file_name.to_string_lossy()));
-                
+
                 // Copy to temp file
                 tokio::fs::copy(&src, &temp_path).await.map_err(|e| {
                     map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "copy file")
                 })?;
-                
+
                 // Atomically replace destination
                 tokio::fs::rename(&temp_path, &dst).await.map_err(|e| {
                     // Clean up temp file on error (spawn cleanup task)
@@ -1570,9 +1599,13 @@ fn atomic_move_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<
                     tokio::spawn(async move {
                         let _ = tokio::fs::remove_file(&temp_cleanup).await;
                     });
-                    map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "atomically move file")
+                    map_io_error(
+                        e,
+                        &format!("{src_clone} -> {dst_clone}"),
+                        "atomically move file",
+                    )
                 })?;
-                
+
                 // Remove source file (best effort - move already succeeded)
                 if let Err(e) = tokio::fs::remove_file(&src).await {
                     // Log warning but don't fail - the move was successful
@@ -1581,7 +1614,11 @@ fn atomic_move_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<
                 }
                 Ok(())
             }
-            Err(e) => Err(map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "atomically move file")),
+            Err(e) => Err(map_io_error(
+                e,
+                &format!("{src_clone} -> {dst_clone}"),
+                "atomically move file",
+            )),
         }
     };
     future_into_py(py, future)
@@ -1620,7 +1657,7 @@ impl FileLock {
     #[new]
     fn new() -> PyResult<Self> {
         Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "FileLock cannot be instantiated directly. Use rapfiles.lock_file() instead."
+            "FileLock cannot be instantiated directly. Use rapfiles.lock_file() instead.",
         ))
     }
 
@@ -1639,7 +1676,7 @@ impl FileLock {
     fn release<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
         let file = Arc::clone(&self.file);
         let path = self.path.clone();
-        
+
         let future = async move {
             // Unlock the file (blocking operation)
             tokio::task::spawn_blocking(move || {
@@ -1651,9 +1688,9 @@ impl FileLock {
                 })
             })
             .await
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to release lock: {e}"
-            )))?
+            .map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to release lock: {e}"))
+            })?
         };
         future_into_py(py, future)
     }
@@ -1705,7 +1742,7 @@ fn lock_file_async(py: Python<'_>, path: String, exclusive: bool) -> PyResult<Bo
     validate_path(&path)?;
     let future = async move {
         let path_clone = path.clone();
-        
+
         // Open or create the file
         let file = tokio::task::spawn_blocking({
             let path = path_clone.clone();
@@ -1721,10 +1758,10 @@ fn lock_file_async(py: Python<'_>, path: String, exclusive: bool) -> PyResult<Bo
             }
         })
         .await
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-            "Failed to open file: {e}"
-        )))??;
-        
+        .map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to open file: {e}"))
+        })??;
+
         // Acquire the lock (blocking operation)
         {
             let file_clone = file.try_clone().map_err(|e| {
@@ -1740,17 +1777,19 @@ fn lock_file_async(py: Python<'_>, path: String, exclusive: bool) -> PyResult<Bo
                     } else {
                         fs2::FileExt::lock_shared(&file_clone)
                     }
-                    .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                        "Failed to acquire lock on {path_clone2}: {e}"
-                    )))
+                    .map_err(|e| {
+                        PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                            "Failed to acquire lock on {path_clone2}: {e}"
+                        ))
+                    })
                 }
             })
             .await
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to acquire lock: {e}"
-            )))??;
+            .map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to acquire lock: {e}"))
+            })??;
         }
-        
+
         Ok(FileLock {
             file: Arc::new(file),
             path: path_clone,
@@ -1784,33 +1823,42 @@ fn read_files_async(py: Python<'_>, paths: Vec<String>) -> PyResult<Bound<'_, Py
     for path in &paths {
         validate_path(path)?;
     }
-    
+
     let future = async move {
         use futures::future;
-        
-        let read_futures: Vec<_> = paths.iter().map(|path| {
-            let path_clone = path.clone();
-            async move {
-                let path_for_result = path_clone.clone();
-                match tokio::fs::read(&path_clone).await {
-                    Ok(bytes) => (path_clone, Ok(bytes)),
-                    Err(e) => (path_for_result.clone(), Err(format!("Failed to read file {path_for_result}: {e}"))),
+
+        let read_futures: Vec<_> = paths
+            .iter()
+            .map(|path| {
+                let path_clone = path.clone();
+                async move {
+                    let path_for_result = path_clone.clone();
+                    match tokio::fs::read(&path_clone).await {
+                        Ok(bytes) => (path_clone, Ok(bytes)),
+                        Err(e) => (
+                            path_for_result.clone(),
+                            Err(format!("Failed to read file {path_for_result}: {e}")),
+                        ),
+                    }
                 }
-            }
-        }).collect();
-        
+            })
+            .collect();
+
         let results = future::join_all(read_futures).await;
         // Convert to tuples with bytes (Ok) or error strings (Err)
         // PyO3 can convert both bytes and String to Python objects
-        let python_results: Vec<(String, Py<PyAny>)> = results.into_iter().map(|(path, result)| {
-            Python::attach(|py| {
-                let py_obj: Py<PyAny> = match result {
-                    Ok(bytes) => PyBytes::new(py, &bytes).into(),
-                    Err(err_str) => PyString::new(py, &err_str).into(),
-                };
-                (path, py_obj)
+        let python_results: Vec<(String, Py<PyAny>)> = results
+            .into_iter()
+            .map(|(path, result)| {
+                Python::attach(|py| {
+                    let py_obj: Py<PyAny> = match result {
+                        Ok(bytes) => PyBytes::new(py, &bytes).into(),
+                        Err(err_str) => PyString::new(py, &err_str).into(),
+                    };
+                    (path, py_obj)
+                })
             })
-        }).collect();
+            .collect();
         Ok(python_results)
     };
     future_into_py(py, future)
@@ -1838,33 +1886,42 @@ fn write_files_async(py: Python<'_>, files: Vec<(String, Vec<u8>)>) -> PyResult<
         validate_path(path)?;
     }
     let files_data = files;
-    
+
     let future = async move {
         use futures::future;
-        
-        let write_futures: Vec<_> = files_data.iter().map(|(path, bytes)| {
-            let path_clone = path.clone();
-            let bytes_clone = bytes.clone();
-            async move {
-                let path_for_result = path_clone.clone();
-                match tokio::fs::write(&path_clone, bytes_clone).await {
-                    Ok(_) => (path_clone, Ok(())),
-                    Err(e) => (path_for_result.clone(), Err(format!("Failed to write file {path_for_result}: {e}"))),
+
+        let write_futures: Vec<_> = files_data
+            .iter()
+            .map(|(path, bytes)| {
+                let path_clone = path.clone();
+                let bytes_clone = bytes.clone();
+                async move {
+                    let path_for_result = path_clone.clone();
+                    match tokio::fs::write(&path_clone, bytes_clone).await {
+                        Ok(_) => (path_clone, Ok(())),
+                        Err(e) => (
+                            path_for_result.clone(),
+                            Err(format!("Failed to write file {path_for_result}: {e}")),
+                        ),
+                    }
                 }
-            }
-        }).collect();
-        
+            })
+            .collect();
+
         let results = future::join_all(write_futures).await;
         // Convert Result<(), String> to Python-compatible values
-        let python_results: Vec<(String, Py<PyAny>)> = results.into_iter().map(|(path, result)| {
-            Python::attach(|py| {
-                let py_obj: Py<PyAny> = match result {
-                    Ok(_) => py.None(),
-                    Err(err_str) => PyString::new(py, &err_str).into(),
-                };
-                (path, py_obj)
+        let python_results: Vec<(String, Py<PyAny>)> = results
+            .into_iter()
+            .map(|(path, result)| {
+                Python::attach(|py| {
+                    let py_obj: Py<PyAny> = match result {
+                        Ok(_) => py.None(),
+                        Err(err_str) => PyString::new(py, &err_str).into(),
+                    };
+                    (path, py_obj)
+                })
             })
-        }).collect();
+            .collect();
         Ok(python_results)
     };
     future_into_py(py, future)
@@ -1893,34 +1950,46 @@ fn copy_files_async(py: Python<'_>, files: Vec<(String, String)>) -> PyResult<Bo
         validate_path(src)?;
         validate_path(dst)?;
     }
-    
+
     let future = async move {
         use futures::future;
-        
-        let copy_futures: Vec<_> = files.iter().map(|(src, dst)| {
-            let src_clone = src.clone();
-            let dst_clone = dst.clone();
-            async move {
-                let src_for_result = src_clone.clone();
-                let dst_for_result = dst_clone.clone();
-                match tokio::fs::copy(&src_clone, &dst_clone).await {
-                    Ok(_) => (src_clone, dst_clone, Ok(())),
-                    Err(e) => (src_for_result.clone(), dst_for_result.clone(), Err(format!("Failed to copy file {src_for_result} -> {dst_for_result}: {e}"))),
+
+        let copy_futures: Vec<_> = files
+            .iter()
+            .map(|(src, dst)| {
+                let src_clone = src.clone();
+                let dst_clone = dst.clone();
+                async move {
+                    let src_for_result = src_clone.clone();
+                    let dst_for_result = dst_clone.clone();
+                    match tokio::fs::copy(&src_clone, &dst_clone).await {
+                        Ok(_) => (src_clone, dst_clone, Ok(())),
+                        Err(e) => (
+                            src_for_result.clone(),
+                            dst_for_result.clone(),
+                            Err(format!(
+                                "Failed to copy file {src_for_result} -> {dst_for_result}: {e}"
+                            )),
+                        ),
+                    }
                 }
-            }
-        }).collect();
-        
+            })
+            .collect();
+
         let results = future::join_all(copy_futures).await;
         // Convert Result<(), String> to Python-compatible values
-        let python_results: Vec<(String, String, Py<PyAny>)> = results.into_iter().map(|(src, dst, result)| {
-            Python::attach(|py| {
-                let py_obj: Py<PyAny> = match result {
-                    Ok(_) => py.None(),
-                    Err(err_str) => PyString::new(py, &err_str).into(),
-                };
-                (src, dst, py_obj)
+        let python_results: Vec<(String, String, Py<PyAny>)> = results
+            .into_iter()
+            .map(|(src, dst, result)| {
+                Python::attach(|py| {
+                    let py_obj: Py<PyAny> = match result {
+                        Ok(_) => py.None(),
+                        Err(err_str) => PyString::new(py, &err_str).into(),
+                    };
+                    (src, dst, py_obj)
+                })
             })
-        }).collect();
+            .collect();
         Ok(python_results)
     };
     future_into_py(py, future)
