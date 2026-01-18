@@ -877,24 +877,32 @@ impl AsyncFile {
         _exc_tb: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Py<PyAny>> {
         // Flush and sync file on exit to ensure all writes are persisted
+        // Only flush/sync for write-enabled modes to avoid Windows permission errors
         let file = Arc::clone(&self.file);
         let path = self.path.clone();
+        let mode = self.mode.clone();
         Python::attach(|py| {
             let future = async move {
-                use tokio::io::AsyncWriteExt;
-                let mut file_guard = file.lock().await;
-                // Flush any buffered data
-                file_guard.flush().await.map_err(|e| {
-                    PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                        "Failed to flush file {path}: {e}"
-                    ))
-                })?;
-                // Sync to ensure data is written to disk
-                file_guard.sync_all().await.map_err(|e| {
-                    PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                        "Failed to sync file {path}: {e}"
-                    ))
-                })?;
+                // Check if mode allows writing (w, w+, r+, a, a+ or binary equivalents)
+                let is_write_mode =
+                    mode.starts_with('w') || mode.contains('+') || mode.starts_with('a');
+
+                if is_write_mode {
+                    use tokio::io::AsyncWriteExt;
+                    let mut file_guard = file.lock().await;
+                    // Flush any buffered data
+                    file_guard.flush().await.map_err(|e| {
+                        PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                            "Failed to flush file {path}: {e}"
+                        ))
+                    })?;
+                    // Sync to ensure data is written to disk
+                    file_guard.sync_all().await.map_err(|e| {
+                        PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                            "Failed to sync file {path}: {e}"
+                        ))
+                    })?;
+                }
                 Ok(false) // Return False to not suppress exceptions
             };
             future_into_py(py, future).map(|bound| bound.unbind())
