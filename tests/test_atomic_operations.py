@@ -5,6 +5,7 @@ import tempfile
 import os
 import asyncio
 import uuid
+import sys
 
 from rapfiles import (
     atomic_write_file,
@@ -135,6 +136,10 @@ async def test_atomic_move_file_overwrites():
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows file locking prevents writing through different handle while lock is held",
+)
 async def test_lock_file_exclusive():
     """Test exclusive file locking."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -466,6 +471,10 @@ async def test_atomic_write_multiple_rapid():
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows file locking prevents writing through different handle while lock is held",
+)
 async def test_lock_file_with_file_operations():
     """Test file operations while holding lock."""
     with tempfile.TemporaryDirectory() as tmpdir:

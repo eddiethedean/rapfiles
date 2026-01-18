@@ -1681,11 +1681,20 @@ impl FileLock {
             // Unlock the file (blocking operation)
             tokio::task::spawn_blocking(move || {
                 use fs2::FileExt;
-                FileExt::unlock(&*file).map_err(|e| {
-                    PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                        "Failed to release lock on {path}: {e}"
-                    ))
-                })
+                match FileExt::unlock(&*file) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        // On Windows, error code 158 (ERROR_NOT_LOCKED) means already unlocked
+                        // Make release() idempotent by ignoring this error
+                        #[cfg(windows)]
+                        if e.raw_os_error() == Some(158) {
+                            return Ok(());
+                        }
+                        Err(PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                            "Failed to release lock on {path}: {e}"
+                        )))
+                    }
+                }
             })
             .await
             .map_err(|e| {

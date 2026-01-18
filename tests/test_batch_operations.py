@@ -4,6 +4,7 @@ import pytest
 import tempfile
 import os
 import uuid
+import sys
 
 from rapfiles import (
     read_files,
@@ -329,7 +330,9 @@ async def test_batch_operations_concurrent():
 
         # Batch should be faster (or at least not much slower)
         # Note: This is a heuristic test, actual timing depends on system
-        assert batch_write_time <= sequential_write_time * 1.5
+        # Windows I/O can be slower, so use a more lenient threshold
+        threshold = 3.0 if sys.platform == "win32" else 1.5
+        assert batch_write_time <= sequential_write_time * threshold
 
 
 @pytest.mark.asyncio
