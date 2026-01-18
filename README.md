@@ -61,6 +61,24 @@ pip install maturin
 maturin develop
 ```
 
+### Development Setup
+
+For development with testing support:
+
+```bash
+git clone https://github.com/eddiethedean/rapfiles.git
+cd rapfiles
+pip install -e ".[test]"
+```
+
+This installs the package in editable mode along with testing dependencies (`pytest`, `pytest-asyncio`, `aiofiles`).
+
+Run tests:
+
+```bash
+pytest
+```
+
 ---
 
 ## Usage
