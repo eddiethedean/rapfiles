@@ -4,7 +4,7 @@ import pytest
 import tempfile
 import os
 
-from rapfiles import open, AsyncFile
+from rapfiles import open
 
 
 @pytest.mark.asyncio
@@ -32,7 +32,7 @@ async def test_open_write():
     try:
         async with open(test_file, "w") as file:
             await file.write("new content")
-        
+
         # Verify write
         async with open(test_file, "r") as file:
             content = await file.read()
@@ -70,9 +70,9 @@ async def test_readline():
         async with open(test_file, "r") as file:
             line1 = await file.readline()
             # Normalize line endings for cross-platform compatibility
-            assert line1.rstrip('\r\n') == "line 1" and line1.endswith(('\n', '\r\n'))
+            assert line1.rstrip("\r\n") == "line 1" and line1.endswith(("\n", "\r\n"))
             line2 = await file.readline()
-            assert line2.rstrip('\r\n') == "line 2" and line2.endswith(('\n', '\r\n'))
+            assert line2.rstrip("\r\n") == "line 2" and line2.endswith(("\n", "\r\n"))
             line3 = await file.readline()
             assert line3 == "line 3"
     finally:
@@ -92,7 +92,9 @@ async def test_readlines():
             lines = await file.readlines()
             # Normalize line endings for cross-platform compatibility (Windows uses \r\n)
             # Replace \r\n with \n to match expected format
-            normalized_lines = [line.replace('\r\n', '\n').replace('\r', '\n') for line in lines]
+            normalized_lines = [
+                line.replace("\r\n", "\n").replace("\r", "\n") for line in lines
+            ]
             assert normalized_lines == ["line 1\n", "line 2\n", "line 3\n"]
     finally:
         if os.path.exists(test_file):
@@ -110,16 +112,16 @@ async def test_seek_tell():
         async with open(test_file, "r") as file:
             pos = await file.tell()
             assert pos == 0
-            
+
             content = await file.read(5)
             assert content == "01234"
-            
+
             pos = await file.tell()
             assert pos == 5
-            
+
             new_pos = await file.seek(0, 0)  # SEEK_SET
             assert new_pos == 0
-            
+
             content = await file.read(3)
             assert content == "012"
     finally:
@@ -137,7 +139,7 @@ async def test_append_mode():
     try:
         async with open(test_file, "a") as file:
             await file.write(" appended")
-        
+
         async with open(test_file, "r") as file:
             content = await file.read()
             assert content == "initial appended"

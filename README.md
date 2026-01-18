@@ -11,7 +11,7 @@
 
 `rapfiles` provides true async filesystem I/O operations for Python, backed by Rust and Tokio. Unlike libraries that wrap blocking I/O in `async` syntax, `rapfiles` guarantees that all I/O work executes **outside the Python GIL**, ensuring event loops never stall under load.
 
-**Roadmap Goal**: Achieve drop-in replacement compatibility with `aiofiles`, enabling seamless migration with true async performance. See [docs/ROADMAP.md](docs/ROADMAP.md) for details.
+**Roadmap Goal**: Achieve drop-in replacement compatibility with `aiofiles`, enabling seamless migration with true async performance. See [docs/ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/docs/ROADMAP.md) for details.
 
 ## Why `rap*`?
 
@@ -31,6 +31,10 @@ See the [rap-manifesto](https://github.com/eddiethedean/rap-manifesto) for philo
 - ✅ **Directory operations** (create, remove, list, walk)
 - ✅ **File metadata** (stat, size, timestamps)
 - ✅ **Path operations** (`rapfiles.ospath` module)
+- ✅ **File manipulation** (copy, move, rename, remove, links, canonicalize)
+- ✅ **Atomic operations** (atomic writes and moves)
+- ✅ **File locking** (shared/exclusive advisory locks)
+- ✅ **Batch operations** (concurrent read/write/copy of multiple files)
 - ✅ **aiofiles compatibility** (Phase 1 complete)
 
 ## Requirements
@@ -176,6 +180,101 @@ async def main():
         read_file("file3.txt"),
     )
     print(contents)  # ['Content 1', 'Content 2', 'Content 3']
+
+asyncio.run(main())
+```
+
+### File Manipulation Operations
+
+```python
+import asyncio
+from rapfiles import copy_file, move_file, remove_file, symlink, canonicalize
+
+async def main():
+    # Copy files
+    await copy_file("source.txt", "destination.txt")
+    
+    # Move/rename files
+    await move_file("old_name.txt", "new_name.txt")
+    await rename("old.txt", "new.txt")  # Alias for move_file
+    
+    # Remove files
+    await remove_file("unwanted.txt")
+    
+    # Create symbolic links
+    await symlink("/path/to/original", "/path/to/link")
+    
+    # Resolve paths (canonicalize)
+    abs_path = await canonicalize("./relative/path/../file.txt")
+    print(abs_path)  # /absolute/path/to/file.txt
+
+asyncio.run(main())
+```
+
+### Atomic File Operations
+
+```python
+import asyncio
+from rapfiles import atomic_write_file, atomic_move_file
+
+async def main():
+    # Atomic write ensures file is never partially written
+    await atomic_write_file("important.txt", "Critical data")
+    
+    # Atomic move ensures destination is never in partial state
+    await atomic_move_file("source.txt", "destination.txt")
+
+asyncio.run(main())
+```
+
+### File Locking
+
+```python
+import asyncio
+from rapfiles import lock_file, lock_file_shared
+
+async def main():
+    # Exclusive lock for writing
+    async with lock_file("data.txt", exclusive=True) as lock:
+        await write_file("data.txt", "Exclusive access")
+    # Lock automatically released
+    
+    # Shared lock for reading
+    async with lock_file_shared("data.txt") as lock:
+        content = await read_file("data.txt")
+        # Multiple readers can hold shared locks simultaneously
+
+asyncio.run(main())
+```
+
+### Batch Operations
+
+```python
+import asyncio
+from rapfiles import read_files, write_files, copy_files
+
+async def main():
+    # Write multiple files concurrently
+    files = {
+        "file1.txt": b"Content 1",
+        "file2.txt": b"Content 2",
+        "file3.txt": b"Content 3",
+    }
+    await write_files(files)
+    
+    # Read multiple files concurrently
+    paths = ["file1.txt", "file2.txt", "file3.txt"]
+    results = await read_files(paths)  # Returns [(path, bytes), ...]
+    
+    # Or as a dictionary
+    content_dict = await read_files_dict(paths)  # Returns {path: bytes}
+    
+    # Copy multiple files concurrently
+    copy_pairs = [
+        ("src1.txt", "dst1.txt"),
+        ("src2.txt", "dst2.txt"),
+    ]
+    await copy_files(copy_pairs)
 
 asyncio.run(main())
 ```
@@ -402,6 +501,85 @@ File metadata structure (aiofiles.stat_result compatible).
 - `accessed` (float): Access time as Unix timestamp
 - `created` (float): Creation time as Unix timestamp
 
+### File Manipulation Operations
+
+#### `copy_file(src: str, dst: str) -> None`
+
+Copy a file asynchronously from source to destination.
+
+#### `move_file(src: str, dst: str) -> None`
+
+Move or rename a file asynchronously (atomic within same filesystem).
+
+#### `rename(src: str, dst: str) -> None`
+
+Rename a file asynchronously (alias for `move_file`).
+
+#### `remove_file(path: str) -> None`
+
+Remove a file asynchronously.
+
+#### `hard_link(src: str, dst: str) -> None`
+
+Create a hard link asynchronously.
+
+#### `symlink(src: str, dst: str) -> None`
+
+Create a symbolic link asynchronously.
+
+#### `canonicalize(path: str) -> str`
+
+Resolve all symbolic links and return the canonical absolute path.
+
+### Atomic Operations
+
+#### `atomic_write_file(path: str, contents: str) -> None`
+
+Write a file atomically using a temporary file, ensuring the target is never partially written.
+
+#### `atomic_write_file_bytes(path: str, contents: bytes) -> None`
+
+Write bytes to a file atomically.
+
+#### `atomic_move_file(src: str, dst: str) -> None`
+
+Move a file atomically.
+
+### File Locking
+
+#### `lock_file(path: str, exclusive: bool = True) -> FileLock`
+
+Acquire an advisory file lock (exclusive or shared) as an async context manager.
+
+#### `lock_file_shared(path: str) -> FileLock`
+
+Acquire a shared (read) file lock as an async context manager.
+
+#### `FileLock` Class
+
+File lock object returned by `lock_file()` and `lock_file_shared()`. Use with `async with` syntax.
+
+**Methods:**
+- `release() -> None`: Manually release the lock
+
+### Batch Operations
+
+#### `read_files(paths: List[str]) -> List[Tuple[str, bytes]]`
+
+Read multiple files concurrently. Returns list of `(path, bytes)` tuples.
+
+#### `read_files_dict(paths: List[str]) -> Dict[str, bytes]`
+
+Read multiple files concurrently. Returns dictionary mapping paths to file contents.
+
+#### `write_files(files: Dict[str, bytes]) -> None`
+
+Write multiple files concurrently. Accepts dictionary of `{path: bytes}`.
+
+#### `copy_files(files: List[Tuple[str, str]]) -> None`
+
+Copy multiple files concurrently. Accepts list of `(src_path, dst_path)` tuples.
+
 ### Path Operations
 
 The `rapfiles.ospath` module provides synchronous path operations compatible with `aiofiles.ospath`:
@@ -431,15 +609,15 @@ rap-bench detect rapfiles
 
 ## Documentation
 
-Comprehensive documentation is available in the [`docs/`](docs/) directory:
-- [Roadmap](docs/ROADMAP.md) - Detailed development plans
-- [Build and Test](docs/BUILD_AND_TEST.md) - Local development setup
-- [Release Notes](docs/PYPI_RELEASE_NOTES.md) - Version history and changes
-- [Security](SECURITY.md) - Security policy and reporting
+Comprehensive documentation is available in the [`docs/`](https://github.com/eddiethedean/rapfiles/tree/main/docs) directory:
+- [Roadmap](https://github.com/eddiethedean/rapfiles/blob/main/docs/ROADMAP.md) - Detailed development plans
+- [Build and Test](https://github.com/eddiethedean/rapfiles/blob/main/docs/BUILD_AND_TEST.md) - Local development setup
+- [Release Notes](https://github.com/eddiethedean/rapfiles/blob/main/docs/PYPI_RELEASE_NOTES.md) - Version history and changes
+- [Security](https://github.com/eddiethedean/rapfiles/blob/main/SECURITY.md) - Security policy and reporting
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed development plans. Key goals include:
+See [docs/ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/docs/ROADMAP.md) for detailed development plans. Key goals include:
 - Drop-in replacement for `aiofiles` (Phase 1)
 - Comprehensive filesystem operations (directories, metadata, permissions)
 - Advanced I/O patterns and zero-copy optimizations
@@ -453,6 +631,18 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed development plans. Key goals
 - [rapcsv](https://github.com/eddiethedean/rapcsv) - Streaming async CSV
 
 ## Changelog
+
+See [CHANGELOG.md](https://github.com/eddiethedean/rapfiles/blob/main/CHANGELOG.md) for detailed version history.
+
+### v0.2.0 (2026-01-17)
+
+**Phase 2 Complete** - Advanced Filesystem Operations:
+- ✅ File manipulation operations (copy, move, rename, remove, links, canonicalize)
+- ✅ Atomic operations (atomic writes and moves)
+- ✅ File locking (shared/exclusive advisory locks)
+- ✅ Batch operations (concurrent read/write/copy of multiple files)
+- ✅ 188+ comprehensive tests
+- ✅ Full documentation and type stubs
 
 ### v0.1.1 (2026-01-16)
 
@@ -471,7 +661,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed development plans. Key goals
 
 ### v0.1.0 (2025-01-12)
 
-## Current Status (v0.1.1)
+## Current Status (v0.1.2)
 
 **Phase 1 Complete ✅:**
 - ✅ File handle operations (`AsyncFile` class with `async with` support)
@@ -484,17 +674,25 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed development plans. Key goals
 - ✅ File metadata: `stat()`, `metadata()`, `FileMetadata` class
 - ✅ Path operations: `rapfiles.ospath` module (aiofiles.ospath compatible)
 - ✅ aiofiles compatibility: Drop-in replacement for basic `aiofiles` operations
-- ✅ Comprehensive test suite: 34+ tests covering all features
+
+**Phase 2 Complete ✅:**
+- ✅ File manipulation: `copy_file()`, `move_file()`, `rename()`, `remove_file()`
+- ✅ Link operations: `hard_link()`, `symlink()`, `canonicalize()`
+- ✅ Atomic operations: `atomic_write_file()`, `atomic_write_file_bytes()`, `atomic_move_file()`
+- ✅ File locking: `lock_file()`, `lock_file_shared()` with `FileLock` class
+- ✅ Batch operations: `read_files()`, `write_files()`, `copy_files()` with concurrent execution
+- ✅ Comprehensive test suite: 188+ tests covering all Phase 1 and Phase 2 features
 - ✅ Type stubs: Complete `.pyi` files for IDE support
 - ✅ Type checking: Full mypy support with Python 3.8+ compatibility
 - ✅ Code quality: Ruff formatted and linted, clippy checked
 
 **Known Limitations:**
 - `buffering`, `encoding`, `errors`, `newline`, `closefd`, `opener` parameters accepted for API compatibility but not yet fully implemented
+- No streaming operations for large files (planned for Phase 3)
 - No file watching capabilities (planned for future phases)
 - No advanced I/O patterns like zero-copy (planned for future phases)
 
-**Roadmap**: See [docs/ROADMAP.md](docs/ROADMAP.md) for planned improvements. Phase 1 (aiofiles compatibility) is complete. Future phases will add advanced features and optimizations.
+**Roadmap**: See [docs/ROADMAP.md](https://github.com/eddiethedean/rapfiles/blob/main/docs/ROADMAP.md) for planned improvements. Phase 1 (aiofiles compatibility) and Phase 2 (advanced operations) are complete. Future phases will add streaming operations and advanced optimizations.
 
 ## Contributing
 
@@ -504,4 +702,4 @@ Contributions are welcome! Please see our [contributing guidelines](https://gith
 
 MIT
 
-For detailed release notes, see [docs/PYPI_RELEASE_NOTES.md](docs/PYPI_RELEASE_NOTES.md).
+For detailed release notes, see [docs/PYPI_RELEASE_NOTES.md](https://github.com/eddiethedean/rapfiles/blob/main/docs/PYPI_RELEASE_NOTES.md).

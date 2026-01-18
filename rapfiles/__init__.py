@@ -10,6 +10,7 @@ from typing import (
     TYPE_CHECKING,
     Tuple,
     Type,
+    Dict,
 )
 from types import TracebackType
 
@@ -40,6 +41,20 @@ try:
         metadata_async,
         FileMetadata,
         walk_dir_async,
+        copy_file_async,
+        move_file_async,
+        remove_file_async,
+        hard_link_async,
+        symlink_async,
+        canonicalize_async,
+        atomic_write_file_async,
+        atomic_write_file_bytes_async,
+        atomic_move_file_async,
+        lock_file_async,
+        FileLock,
+        read_files_async,
+        write_files_async,
+        copy_files_async,
     )
 except ImportError:
     # Try alternative import path
@@ -64,13 +79,27 @@ except ImportError:
             metadata_async,
             FileMetadata,
             walk_dir_async,
+            copy_file_async,
+            move_file_async,
+            remove_file_async,
+            hard_link_async,
+            symlink_async,
+            canonicalize_async,
+            atomic_write_file_async,
+            atomic_write_file_bytes_async,
+            atomic_move_file_async,
+            lock_file_async,
+            FileLock,
+            read_files_async,
+            write_files_async,
+            copy_files_async,
         )
     except ImportError:
         raise ImportError(
             "Could not import _rapfiles. Make sure rapfiles is built with maturin."
         )
 
-__version__: str = "0.1.2"
+__version__: str = "0.2.0"
 __all__: List[str] = [
     # File operations
     "read_file_async",
@@ -102,6 +131,28 @@ __all__: List[str] = [
     "FileMetadata",
     # Directory traversal
     "walk_dir",
+    # File manipulation
+    "copy_file",
+    "move_file",
+    "rename",
+    "remove_file",
+    "hard_link",
+    "symlink",
+    "canonicalize",
+    # Atomic operations
+    "atomic_write_file",
+    "atomic_write_file_bytes",
+    "atomic_move_file",
+    # File locking
+    "lock_file",
+    "lock_file_shared",
+    "FileLock",
+    "_LockContextManager",
+    # Batch operations
+    "read_files",
+    "read_files_dict",
+    "write_files",
+    "copy_files",
 ]
 
 
@@ -530,6 +581,488 @@ async def walk_dir(path: str) -> List[Tuple[str, bool]]:
         ```
     """
     return await walk_dir_async(path)
+
+
+# File manipulation operations
+async def copy_file(src: str, dst: str) -> None:
+    """
+    Copy a file asynchronously.
+
+    Copies a file from source to destination. If the destination file exists,
+    it will be overwritten. All I/O operations execute outside the Python GIL
+    using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        src: Path to the source file
+        dst: Path to the destination file
+
+    Raises:
+        FileNotFoundError: If the source file does not exist
+        IOError: If the file cannot be copied
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await copy_file("source.txt", "destination.txt")
+        ```
+    """
+    await copy_file_async(src, dst)
+
+
+async def move_file(src: str, dst: str) -> None:
+    """
+    Move or rename a file asynchronously.
+
+    Moves a file from source to destination. This is an atomic operation when
+    moving within the same filesystem. For cross-device moves, it will copy
+    and then remove the source file. All I/O operations execute outside the
+    Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        src: Path to the source file
+        dst: Path to the destination file
+
+    Raises:
+        FileNotFoundError: If the source file does not exist
+        IOError: If the file cannot be moved
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await move_file("old_name.txt", "new_name.txt")
+        ```
+    """
+    await move_file_async(src, dst)
+
+
+async def rename(src: str, dst: str) -> None:
+    """
+    Rename a file asynchronously (alias for move_file).
+
+    This is an alias for `move_file()`. Renames a file from source to destination.
+    All I/O operations execute outside the Python GIL using native Rust/Tokio,
+    ensuring true async behavior.
+
+    Args:
+        src: Path to the source file
+        dst: Path to the destination file
+
+    Raises:
+        FileNotFoundError: If the source file does not exist
+        IOError: If the file cannot be renamed
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await rename("old_name.txt", "new_name.txt")
+        ```
+    """
+    await move_file_async(src, dst)
+
+
+async def remove_file(path: str) -> None:
+    """
+    Remove a file asynchronously.
+
+    Deletes a file from the filesystem. This will not remove directories.
+    All I/O operations execute outside the Python GIL using native Rust/Tokio,
+    ensuring true async behavior.
+
+    Args:
+        path: Path to the file to remove
+
+    Raises:
+        FileNotFoundError: If the file does not exist
+        IOError: If the file cannot be removed (e.g., if it's a directory)
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await remove_file("file_to_delete.txt")
+        ```
+    """
+    await remove_file_async(path)
+
+
+async def hard_link(src: str, dst: str) -> None:
+    """
+    Create a hard link asynchronously.
+
+    Creates a hard link from source to destination. Both files will refer
+    to the same underlying file data. All I/O operations execute outside
+    the Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        src: Path to the source file
+        dst: Path to the destination link
+
+    Raises:
+        FileNotFoundError: If the source file does not exist
+        IOError: If the link cannot be created
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await hard_link("original.txt", "link.txt")
+        ```
+    """
+    await hard_link_async(src, dst)
+
+
+async def symlink(src: str, dst: str) -> None:
+    """
+    Create a symbolic link asynchronously.
+
+    Creates a symbolic link from source to destination. The destination
+    will point to the source path. All I/O operations execute outside
+    the Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        src: Path that the symlink will point to
+        dst: Path to the symbolic link to create
+
+    Raises:
+        IOError: If the symlink cannot be created
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await symlink("/path/to/original", "/path/to/link")
+        ```
+    """
+    await symlink_async(src, dst)
+
+
+async def canonicalize(path: str) -> str:
+    """
+    Canonicalize a path asynchronously.
+
+    Resolves all symbolic links and returns the absolute path. All I/O
+    operations execute outside the Python GIL using native Rust/Tokio,
+    ensuring true async behavior.
+
+    Args:
+        path: Path to canonicalize
+
+    Returns:
+        Canonical absolute path as a string
+
+    Raises:
+        FileNotFoundError: If the path does not exist
+        IOError: If the path cannot be canonicalized
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        canonical_path = await canonicalize("./relative/path/../file.txt")
+        print(canonical_path)  # /absolute/path/to/file.txt
+        ```
+    """
+    return await canonicalize_async(path)
+
+
+# Atomic file operations
+async def atomic_write_file(path: str, contents: str) -> None:
+    """
+    Write a file atomically using a temporary file.
+
+    Writes content to a temporary file first, then atomically replaces
+    the target file by renaming. This ensures the target file is never
+    in a partially-written state. All I/O operations execute outside
+    the Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        path: Path to the file to write
+        contents: Content to write to the file (will be encoded as UTF-8)
+
+    Raises:
+        IOError: If the file cannot be written
+        PermissionError: If write permission is denied
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await atomic_write_file("important.txt", "Critical data")
+        ```
+    """
+    await atomic_write_file_async(path, contents)
+
+
+async def atomic_write_file_bytes(path: str, contents: bytes) -> None:
+    """
+    Write bytes to a file atomically using a temporary file.
+
+    Writes bytes to a temporary file first, then atomically replaces
+    the target file by renaming. This ensures the target file is never
+    in a partially-written state. All I/O operations execute outside
+    the Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        path: Path to the file to write
+        contents: Bytes to write to the file
+
+    Raises:
+        IOError: If the file cannot be written
+        PermissionError: If write permission is denied
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await atomic_write_file_bytes("data.bin", b"\\x00\\x01\\x02")
+        ```
+    """
+    await atomic_write_file_bytes_async(path, contents)
+
+
+async def atomic_move_file(src: str, dst: str) -> None:
+    """
+    Move a file atomically.
+
+    Moves a file from source to destination atomically. For cross-device
+    moves, it will copy atomically and then remove the source. All I/O
+    operations execute outside the Python GIL using native Rust/Tokio,
+    ensuring true async behavior.
+
+    Args:
+        src: Path to the source file
+        dst: Path to the destination file
+
+    Raises:
+        FileNotFoundError: If the source file does not exist
+        IOError: If the file cannot be moved
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        await atomic_move_file("old_name.txt", "new_name.txt")
+        ```
+    """
+    await atomic_move_file_async(src, dst)
+
+
+# File locking operations
+class _LockContextManager:
+    """Internal async context manager wrapper for lock_file."""
+
+    def __init__(self, coro: Coroutine[Any, Any, "FileLock"]) -> None:
+        self._coro: Coroutine[Any, Any, "FileLock"] = coro
+        self._lock: Optional["FileLock"] = None
+
+    async def __aenter__(self) -> "FileLock":
+        self._lock = await self._coro
+        return self._lock.__aenter__()
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> Optional[bool]:
+        if self._lock:
+            return await self._lock.__aexit__(exc_type, exc_val, exc_tb)
+        return None
+
+
+def lock_file(path: str, exclusive: bool = True) -> _LockContextManager:
+    """
+    Lock a file asynchronously.
+
+    Acquires an advisory file lock on the specified file. The lock can be
+    shared (read) or exclusive (write). The file is created if it doesn't
+    exist. All I/O operations execute outside the Python GIL using native
+    Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        path: Path to the file to lock
+        exclusive: If True, acquire exclusive (write) lock; if False, acquire shared (read) lock
+
+    Returns:
+        FileLock: A file lock object that can be used as an async context manager
+
+    Raises:
+        IOError: If the file cannot be locked
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        async with lock_file("file.txt", exclusive=True) as lock:
+            # File is locked here
+            await write_file("file.txt", "content")
+        # Lock is automatically released
+        ```
+    """
+    coro = lock_file_async(path, exclusive)
+    return _LockContextManager(coro)
+
+
+def lock_file_shared(path: str) -> _LockContextManager:
+    """
+    Lock a file with shared (read) lock asynchronously.
+
+    Convenience function for acquiring a shared lock. Equivalent to
+    `lock_file(path, exclusive=False)`. All I/O operations execute outside
+    the Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        path: Path to the file to lock
+
+    Returns:
+        FileLock: A file lock object that can be used as an async context manager
+
+    Raises:
+        IOError: If the file cannot be locked
+        ValueError: If the path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        async with lock_file_shared("file.txt") as lock:
+            # File has shared lock - multiple readers can access
+            content = await read_file("file.txt")
+        # Lock is automatically released
+        ```
+    """
+    coro = lock_file_async(path, exclusive=False)
+    return _LockContextManager(coro)
+
+
+# Batch operations
+async def read_files(paths: List[str]) -> List[Tuple[str, bytes]]:
+    """
+    Read multiple files concurrently.
+
+    Reads all specified files concurrently and returns their contents.
+    All I/O operations execute outside the Python GIL using native Rust/Tokio,
+    ensuring true async behavior.
+
+    Args:
+        paths: List of file paths to read
+
+    Returns:
+        List of (path, bytes) tuples where:
+        - path: The file path
+        - bytes: The file contents as bytes, or raises exception on error
+
+    Raises:
+        FileNotFoundError: If any file does not exist
+        IOError: If any file cannot be read
+        ValueError: If any path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        files = await read_files(["file1.txt", "file2.txt", "file3.txt"])
+        for path, content in files:
+            print(f"{path}: {len(content)} bytes")
+        ```
+    """
+    results = await read_files_async(paths)
+    # Convert results to list of (path, bytes) tuples, raising on error
+    output = []
+    for path, result in results:
+        if isinstance(result, bytes):
+            output.append((path, result))
+        elif isinstance(result, str):
+            raise IOError(result)
+        elif isinstance(result, Exception):
+            raise result
+        else:
+            output.append((path, result))
+    return output
+
+
+async def read_files_dict(paths: List[str]) -> Dict[str, bytes]:
+    """
+    Read multiple files concurrently and return as dictionary.
+
+    Reads all specified files concurrently and returns their contents as a
+    dictionary mapping paths to contents. All I/O operations execute outside
+    the Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        paths: List of file paths to read
+
+    Returns:
+        Dictionary mapping file paths to their contents (bytes)
+
+    Raises:
+        FileNotFoundError: If any file does not exist
+        IOError: If any file cannot be read
+        ValueError: If any path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        files = await read_files_dict(["file1.txt", "file2.txt"])
+        print(files["file1.txt"])  # b"content"
+        ```
+    """
+    results = await read_files(paths)
+    return dict(results)
+
+
+async def write_files(files: Dict[str, bytes]) -> None:
+    """
+    Write multiple files concurrently.
+
+    Writes contents to all specified files concurrently. All I/O operations
+    execute outside the Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        files: Dictionary mapping file paths to their contents (bytes)
+
+    Raises:
+        IOError: If any file cannot be written
+        PermissionError: If write permission is denied for any file
+        ValueError: If any path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        files = {
+            "file1.txt": b"content1",
+            "file2.txt": b"content2",
+        }
+        await write_files(files)
+        ```
+    """
+    # Convert dict to list of (path, bytes) tuples for Rust function
+    # PyO3 will automatically convert Python bytes to Vec<u8>
+    files_list = [(path, contents) for path, contents in files.items()]
+    results = await write_files_async(files_list)
+
+    # Check for errors
+    for path, result in results:
+        if isinstance(result, str):
+            raise IOError(result)
+
+
+async def copy_files(files: List[Tuple[str, str]]) -> None:
+    """
+    Copy multiple files concurrently.
+
+    Copies all specified files concurrently. All I/O operations execute
+    outside the Python GIL using native Rust/Tokio, ensuring true async behavior.
+
+    Args:
+        files: List of (src, dst) tuples to copy
+
+    Raises:
+        FileNotFoundError: If any source file does not exist
+        IOError: If any file cannot be copied
+        ValueError: If any path is invalid (empty or contains null bytes)
+
+    Example:
+        ```python
+        files = [
+            ("source1.txt", "dest1.txt"),
+            ("source2.txt", "dest2.txt"),
+        ]
+        await copy_files(files)
+        ```
+    """
+    results = await copy_files_async(files)
+
+    # Check for errors
+    for src, dst, result in results:
+        if isinstance(result, str):
+            raise IOError(result)
 
 
 # Type variable for the return type of open()

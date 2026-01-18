@@ -3,7 +3,6 @@
 import pytest
 import tempfile
 import os
-import time
 
 from rapfiles import stat, metadata, FileMetadata
 
@@ -17,7 +16,7 @@ async def test_stat():
 
     try:
         stat_result = await stat(test_file)
-        
+
         assert isinstance(stat_result, FileMetadata)
         assert stat_result.size > 0
         assert stat_result.is_file is True
@@ -38,7 +37,7 @@ async def test_metadata():
 
     try:
         meta = await metadata(test_file)
-        
+
         assert isinstance(meta, FileMetadata)
         assert meta.size > 0
         assert meta.is_file is True
@@ -52,7 +51,7 @@ async def test_stat_directory():
     """Test getting directory statistics."""
     with tempfile.TemporaryDirectory() as tmpdir:
         stat_result = await stat(tmpdir)
-        
+
         assert isinstance(stat_result, FileMetadata)
         assert stat_result.is_dir is True
         assert stat_result.is_file is False
@@ -67,7 +66,7 @@ async def test_stat_properties():
 
     try:
         stat_result = await stat(test_file)
-        
+
         # Test property access
         size = stat_result.size
         is_file = stat_result.is_file
@@ -75,7 +74,7 @@ async def test_stat_properties():
         modified = stat_result.modified
         accessed = stat_result.accessed
         created = stat_result.created
-        
+
         assert isinstance(size, int)
         assert isinstance(is_file, bool)
         assert isinstance(is_dir, bool)

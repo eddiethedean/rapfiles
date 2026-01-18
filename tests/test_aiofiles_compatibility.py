@@ -12,7 +12,7 @@ import os
 async def test_open_compatibility():
     """Test that open() matches aiofiles.open() signature."""
     import rapfiles as aiofiles
-    
+
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
         test_file = f.name
         f.write("test content")
@@ -22,11 +22,11 @@ async def test_open_compatibility():
         async with aiofiles.open(test_file, "r") as f:
             content = await f.read()
             assert content == "test content"
-        
+
         # Test write
         async with aiofiles.open(test_file, "w") as f:
             await f.write("new content")
-        
+
         # Verify
         async with aiofiles.open(test_file, "r") as f:
             content = await f.read()
@@ -40,7 +40,7 @@ async def test_open_compatibility():
 async def test_file_handle_methods():
     """Test that file handle methods match aiofiles API."""
     import rapfiles as aiofiles
-    
+
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
         test_file = f.name
         f.write("line 1\nline 2\nline 3")
@@ -50,23 +50,23 @@ async def test_file_handle_methods():
             # Test read()
             content = await f.read()
             assert isinstance(content, str)
-            
+
             # Reset and test readline()
             await f.seek(0)
             line = await f.readline()
             # Normalize line endings for cross-platform compatibility
-            assert line.rstrip('\r\n') == "line 1" and line.endswith(('\n', '\r\n'))
-            
+            assert line.rstrip("\r\n") == "line 1" and line.endswith(("\n", "\r\n"))
+
             # Test readlines()
             await f.seek(0)
             lines = await f.readlines()
             assert len(lines) == 3
-            
+
             # Test seek() and tell()
             await f.seek(0)
             pos = await f.tell()
             assert pos == 0
-            
+
             await f.seek(5)
             pos = await f.tell()
             assert pos == 5
@@ -79,7 +79,7 @@ async def test_file_handle_methods():
 async def test_ospath_compatibility():
     """Test that rapfiles.ospath matches aiofiles.ospath API."""
     import rapfiles
-    
+
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
         test_file = f.name
         f.write("test")
@@ -90,16 +90,16 @@ async def test_ospath_compatibility():
         assert rapfiles.ospath.isfile(test_file) is True
         assert rapfiles.ospath.isdir(test_file) is False
         assert rapfiles.ospath.getsize(test_file) > 0
-        
+
         # Test path operations
         joined = rapfiles.ospath.join("dir", "file.txt")
         assert "dir" in joined
         assert "file.txt" in joined
-        
+
         abspath = rapfiles.ospath.abspath(test_file)
         assert os.path.isabs(abspath)
-        
-        dirname = rapfiles.ospath.dirname(test_file)
+
+        rapfiles.ospath.dirname(test_file)
         basename = rapfiles.ospath.basename(test_file)
         assert basename in test_file
     finally:
@@ -111,7 +111,7 @@ async def test_ospath_compatibility():
 async def test_binary_mode():
     """Test binary mode compatibility with aiofiles."""
     import rapfiles as aiofiles
-    
+
     with tempfile.NamedTemporaryFile(mode="wb", delete=False, suffix=".bin") as f:
         test_file = f.name
         f.write(b"binary content")
@@ -130,7 +130,7 @@ async def test_binary_mode():
 async def test_context_manager():
     """Test async context manager compatibility."""
     import rapfiles as aiofiles
-    
+
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
         test_file = f.name
 
@@ -138,7 +138,7 @@ async def test_context_manager():
         # Test that context manager works
         async with aiofiles.open(test_file, "w") as f:
             await f.write("content")
-        
+
         # File should be closed after context exit
         async with aiofiles.open(test_file, "r") as f:
             content = await f.read()

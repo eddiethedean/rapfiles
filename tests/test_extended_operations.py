@@ -6,7 +6,6 @@ import os
 
 from rapfiles import (
     read_file,
-    write_file,
     read_file_bytes,
     write_file_bytes,
     append_file,
@@ -37,7 +36,7 @@ async def test_write_file_bytes():
 
     try:
         await write_file_bytes(test_file, b"binary content")
-        
+
         # Verify write
         with open(test_file, "rb") as f:
             content = f.read()
@@ -56,7 +55,7 @@ async def test_append_file():
 
     try:
         await append_file(test_file, " appended")
-        
+
         # Verify append
         content = await read_file(test_file)
         assert content == "initial appended"
@@ -75,7 +74,7 @@ async def test_append_file_multiple():
     try:
         await append_file(test_file, " middle")
         await append_file(test_file, " end")
-        
+
         content = await read_file(test_file)
         assert content == "start middle end"
     finally:
@@ -92,14 +91,14 @@ async def test_read_write_roundtrip_bytes():
     try:
         # Write bytes
         await write_file_bytes(test_file, b"initial bytes")
-        
+
         # Read bytes
         content = await read_file_bytes(test_file)
         assert content == b"initial bytes"
-        
+
         # Write new bytes
         await write_file_bytes(test_file, b"new bytes")
-        
+
         # Read new bytes
         content = await read_file_bytes(test_file)
         assert content == b"new bytes"

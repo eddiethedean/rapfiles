@@ -54,7 +54,7 @@ fn validate_path(path: &str) -> PyResult<()> {
 fn map_io_error(e: std::io::Error, path: &str, operation: &str) -> PyErr {
     use std::io::ErrorKind;
 
-    let error_msg = format!("Failed to {} {}: {}", operation, path, e);
+    let error_msg = format!("Failed to {operation} {path}: {e}");
 
     match e.kind() {
         ErrorKind::NotFound => PyErr::new::<pyo3::exceptions::PyFileNotFoundError, _>(error_msg),
@@ -111,6 +111,28 @@ fn _rapfiles(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Directory traversal
     m.add_function(wrap_pyfunction!(walk_dir_async, m)?)?;
+
+    // File manipulation operations
+    m.add_function(wrap_pyfunction!(copy_file_async, m)?)?;
+    m.add_function(wrap_pyfunction!(move_file_async, m)?)?;
+    m.add_function(wrap_pyfunction!(remove_file_async, m)?)?;
+    m.add_function(wrap_pyfunction!(hard_link_async, m)?)?;
+    m.add_function(wrap_pyfunction!(symlink_async, m)?)?;
+    m.add_function(wrap_pyfunction!(canonicalize_async, m)?)?;
+
+    // Atomic operations
+    m.add_function(wrap_pyfunction!(atomic_write_file_async, m)?)?;
+    m.add_function(wrap_pyfunction!(atomic_write_file_bytes_async, m)?)?;
+    m.add_function(wrap_pyfunction!(atomic_move_file_async, m)?)?;
+
+    // File locking
+    m.add_function(wrap_pyfunction!(lock_file_async, m)?)?;
+    m.add_class::<FileLock>()?;
+
+    // Batch operations
+    m.add_function(wrap_pyfunction!(read_files_async, m)?)?;
+    m.add_function(wrap_pyfunction!(write_files_async, m)?)?;
+    m.add_function(wrap_pyfunction!(copy_files_async, m)?)?;
 
     Ok(())
 }
@@ -204,8 +226,7 @@ fn read_file_bytes_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyA
         let path_clone = path.clone();
         tokio::fs::read(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to read file {}: {e}",
-                path_clone
+                "Failed to read file {path_clone}: {e}"
             ))
         })
     };
@@ -281,16 +302,14 @@ fn append_file_async(py: Python<'_>, path: String, contents: String) -> PyResult
             .await
             .map_err(|e| {
                 PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                    "Failed to open file {} for appending: {e}",
-                    path_clone
+                    "Failed to open file {path_clone} for appending: {e}"
                 ))
             })?;
 
         use tokio::io::AsyncWriteExt;
         file.write_all(contents.as_bytes()).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to append to file {}: {e}",
-                path_clone
+                "Failed to append to file {path_clone}: {e}"
             ))
         })
     };
@@ -324,8 +343,7 @@ fn create_dir_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> 
         let path_clone = path.clone();
         tokio::fs::create_dir(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to create directory {}: {e}",
-                path_clone
+                "Failed to create directory {path_clone}: {e}"
             ))
         })
     };
@@ -357,8 +375,7 @@ fn create_dir_all_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAn
         let path_clone = path.clone();
         tokio::fs::create_dir_all(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to create directory {}: {e}",
-                path_clone
+                "Failed to create directory {path_clone}: {e}"
             ))
         })
     };
@@ -373,8 +390,7 @@ fn remove_dir_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> 
         let path_clone = path.clone();
         tokio::fs::remove_dir(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to remove directory {}: {e}",
-                path_clone
+                "Failed to remove directory {path_clone}: {e}"
             ))
         })
     };
@@ -389,8 +405,7 @@ fn remove_dir_all_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAn
         let path_clone = path.clone();
         tokio::fs::remove_dir_all(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to remove directory {}: {e}",
-                path_clone
+                "Failed to remove directory {path_clone}: {e}"
             ))
         })
     };
@@ -422,16 +437,14 @@ fn list_dir_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
         let path_clone = path.clone();
         let mut entries = tokio::fs::read_dir(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to read directory {}: {e}",
-                path_clone
+                "Failed to read directory {path_clone}: {e}"
             ))
         })?;
 
         let mut names = Vec::new();
         while let Some(entry) = entries.next_entry().await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to read directory entry in {}: {e}",
-                path_clone
+                "Failed to read directory entry in {path_clone}: {e}"
             ))
         })? {
             if let Some(name) = entry.file_name().to_str() {
@@ -459,8 +472,7 @@ fn is_file_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
         let path_clone = path.clone();
         let metadata = tokio::fs::metadata(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to get metadata for {}: {e}",
-                path_clone
+                "Failed to get metadata for {path_clone}: {e}"
             ))
         })?;
         Ok(metadata.is_file())
@@ -476,8 +488,7 @@ fn is_dir_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
         let path_clone = path.clone();
         let metadata = tokio::fs::metadata(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to get metadata for {}: {e}",
-                path_clone
+                "Failed to get metadata for {path_clone}: {e}"
             ))
         })?;
         Ok(metadata.is_dir())
@@ -582,8 +593,7 @@ impl AsyncFile {
                 let mut buffer = Vec::new();
                 file_guard.read_to_end(&mut buffer).await.map_err(|e| {
                     PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                        "Failed to read file {}: {e}",
-                        path
+                        "Failed to read file {path}: {e}"
                     ))
                 })?;
                 buffer
@@ -591,8 +601,7 @@ impl AsyncFile {
                 let mut buffer = vec![0u8; size as usize];
                 let n = file_guard.read(&mut buffer).await.map_err(|e| {
                     PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                        "Failed to read file {}: {e}",
-                        path
+                        "Failed to read file {path}: {e}"
                     ))
                 })?;
                 buffer.truncate(n);
@@ -641,8 +650,7 @@ impl AsyncFile {
             let mut file_guard = file.lock().await;
             file_guard.write_all(&bytes).await.map_err(|e| {
                 PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                    "Failed to write file {}: {e}",
-                    path
+                    "Failed to write file {path}: {e}"
                 ))
             })?;
             Ok(bytes.len() as i64)
@@ -801,8 +809,7 @@ impl AsyncFile {
 
             let new_pos = file_guard.seek(pos).await.map_err(|e| {
                 PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                    "Failed to seek in file {}: {e}",
-                    path
+                    "Failed to seek in file {path}: {e}"
                 ))
             })?;
 
@@ -831,8 +838,7 @@ impl AsyncFile {
             let mut file_guard = file.lock().await;
             let pos = file_guard.stream_position().await.map_err(|e| {
                 PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                    "Failed to get position in file {}: {e}",
-                    path
+                    "Failed to get position in file {path}: {e}"
                 ))
             })?;
             Ok(pos as i64)
@@ -1001,8 +1007,7 @@ fn stat_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
         let path_clone = path.clone();
         let metadata = tokio::fs::metadata(&path).await.map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                "Failed to get metadata for {}: {e}",
-                path_clone
+                "Failed to get metadata for {path_clone}: {e}"
             ))
         })?;
 
@@ -1087,8 +1092,7 @@ fn walk_dir_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
 
             while let Some(entry) = entries.next_entry().await.map_err(|e| {
                 PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
-                    "Failed to read directory entry in {}: {e}",
-                    current_path
+                    "Failed to read directory entry in {current_path}: {e}"
                 ))
             })? {
                 let entry_path = entry.path();
@@ -1112,6 +1116,802 @@ fn walk_dir_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
         }
 
         Ok(results)
+    };
+    future_into_py(py, future)
+}
+
+// File manipulation operations
+
+/// Copy a file asynchronously.
+///
+/// Copies a file from source to destination. If the destination file exists,
+/// it will be overwritten. All I/O operations execute outside the Python GIL
+/// using native Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `src` - Path to the source file
+/// * `dst` - Path to the destination file
+///
+/// # Returns
+///
+/// A coroutine that yields `None` on success.
+///
+/// # Errors
+///
+/// Returns `PyFileNotFoundError` if the source file does not exist,
+/// `PyIOError` if the file cannot be copied, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn copy_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&src)?;
+    validate_path(&dst)?;
+    let future = async move {
+        let src_clone = src.clone();
+        let dst_clone = dst.clone();
+        tokio::fs::copy(&src, &dst)
+            .await
+            .map_err(|e| map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "copy file"))?;
+        Ok(())
+    };
+    future_into_py(py, future)
+}
+
+/// Move or rename a file asynchronously.
+///
+/// Moves a file from source to destination. This is an atomic operation when
+/// moving within the same filesystem. For cross-device moves, it will copy
+/// and then remove the source file. All I/O operations execute outside the
+/// Python GIL using native Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `src` - Path to the source file
+/// * `dst` - Path to the destination file
+///
+/// # Returns
+///
+/// A coroutine that yields `None` on success.
+///
+/// # Errors
+///
+/// Returns `PyFileNotFoundError` if the source file does not exist,
+/// `PyIOError` if the file cannot be moved, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn move_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&src)?;
+    validate_path(&dst)?;
+    let future = async move {
+        let src_clone = src.clone();
+        let dst_clone = dst.clone();
+        
+        // Try rename first (atomic on same filesystem)
+        match tokio::fs::rename(&src, &dst).await {
+            Ok(_) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::CrossesDevices => {
+                // Cross-device move: copy then remove
+                tokio::fs::copy(&src, &dst)
+                    .await
+                    .map_err(|e| map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "copy file"))?;
+                tokio::fs::remove_file(&src)
+                    .await
+                    .map_err(|e| map_io_error(e, &src_clone, "remove file"))?;
+                Ok(())
+            }
+            Err(e) => Err(map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "move file")),
+        }
+    };
+    future_into_py(py, future)
+}
+
+/// Remove a file asynchronously.
+///
+/// Deletes a file from the filesystem. This will not remove directories.
+/// All I/O operations execute outside the Python GIL using native Tokio,
+/// ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `path` - Path to the file to remove
+///
+/// # Returns
+///
+/// A coroutine that yields `None` on success.
+///
+/// # Errors
+///
+/// Returns `PyFileNotFoundError` if the file does not exist,
+/// `PyIOError` if the file cannot be removed (e.g., if it's a directory),
+/// or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn remove_file_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&path)?;
+    let future = async move {
+        let path_clone = path.clone();
+        
+        // Check if it's a directory first to provide a better error message
+        let metadata = tokio::fs::metadata(&path).await;
+        if let Ok(md) = metadata {
+            if md.is_dir() {
+                return Err(PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                    "Failed to remove file {path_clone}: path is a directory. Use remove_dir() instead."
+                )));
+            }
+        }
+        
+        tokio::fs::remove_file(&path)
+            .await
+            .map_err(|e| map_io_error(e, &path_clone, "remove file"))
+    };
+    future_into_py(py, future)
+}
+
+/// Create a hard link asynchronously.
+///
+/// Creates a hard link from source to destination. Both files will refer
+/// to the same underlying file data. All I/O operations execute outside
+/// the Python GIL using native Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `src` - Path to the source file
+/// * `dst` - Path to the destination link
+///
+/// # Returns
+///
+/// A coroutine that yields `None` on success.
+///
+/// # Errors
+///
+/// Returns `PyFileNotFoundError` if the source file does not exist,
+/// `PyIOError` if the link cannot be created, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn hard_link_async(py: Python<'_>, src: String, dst: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&src)?;
+    validate_path(&dst)?;
+    let future = async move {
+        let src_clone = src.clone();
+        let dst_clone = dst.clone();
+        
+        // tokio::fs::hard_link is not available, use std::fs::hard_link in blocking mode
+        tokio::task::spawn_blocking(move || {
+            std::fs::hard_link(&src, &dst)
+                .map_err(|e| map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "create hard link"))
+        })
+        .await
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to create hard link: {e}")))?
+    };
+    future_into_py(py, future)
+}
+
+/// Create a symbolic link asynchronously.
+///
+/// Creates a symbolic link from source to destination. The destination
+/// will point to the source path. All I/O operations execute outside
+/// the Python GIL using native Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `src` - Path that the symlink will point to
+/// * `dst` - Path to the symbolic link to create
+///
+/// # Returns
+///
+/// A coroutine that yields `None` on success.
+///
+/// # Errors
+///
+/// Returns `PyIOError` if the symlink cannot be created, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn symlink_async(py: Python<'_>, src: String, dst: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&src)?;
+    validate_path(&dst)?;
+    let future = async move {
+        let src_clone = src.clone();
+        let dst_clone = dst.clone();
+        
+        // tokio::fs::symlink has different behavior on Windows vs Unix
+        #[cfg(unix)]
+        {
+            use tokio::fs::symlink;
+            symlink(&src, &dst)
+                .await
+                .map_err(|e| map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "create symlink"))
+        }
+        
+        #[cfg(windows)]
+        {
+            // On Windows, symlink requires checking if src is a file or directory
+            use tokio::fs;
+            let metadata = fs::symlink_metadata(&src).await;
+            match metadata {
+                Ok(md) if md.is_dir() => {
+                    fs::symlink_dir(&src, &dst)
+                        .await
+                        .map_err(|e| map_io_error(e, &format!("{} -> {}", src_clone, dst_clone), "create symlink"))
+                }
+                Ok(_) => {
+                    fs::symlink_file(&src, &dst)
+                        .await
+                        .map_err(|e| map_io_error(e, &format!("{} -> {}", src_clone, dst_clone), "create symlink"))
+                }
+                Err(_) => {
+                    // If source doesn't exist, default to file symlink on Windows
+                    fs::symlink_file(&src, &dst)
+                        .await
+                        .map_err(|e| map_io_error(e, &format!("{} -> {}", src_clone, dst_clone), "create symlink"))
+                }
+            }
+        }
+    };
+    future_into_py(py, future)
+}
+
+/// Canonicalize a path asynchronously.
+///
+/// Resolves all symbolic links and returns the absolute path. All I/O
+/// operations execute outside the Python GIL using native Tokio, ensuring
+/// true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `path` - Path to canonicalize
+///
+/// # Returns
+///
+/// A coroutine that yields the canonical path as a string.
+///
+/// # Errors
+///
+/// Returns `PyFileNotFoundError` if the path does not exist,
+/// `PyIOError` if the path cannot be canonicalized, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn canonicalize_async(py: Python<'_>, path: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&path)?;
+    let future = async move {
+        let path_clone = path.clone();
+        let canonical = tokio::fs::canonicalize(&path)
+            .await
+            .map_err(|e| map_io_error(e, &path_clone, "canonicalize path"))?;
+        
+        canonical
+            .to_str()
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyUnicodeDecodeError, _>(
+                "Canonicalized path contains invalid UTF-8"
+            ))
+            .map(|s| s.to_string())
+    };
+    future_into_py(py, future)
+}
+
+// Atomic file operations
+
+/// Write a file atomically using a temporary file.
+///
+/// Writes content to a temporary file first, then atomically replaces
+/// the target file by renaming. This ensures the target file is never
+/// in a partially-written state. All I/O operations execute outside
+/// the Python GIL using native Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `path` - Path to the file to write
+/// * `contents` - Content to write to the file (UTF-8 string)
+///
+/// # Returns
+///
+/// A coroutine that yields `None` on success.
+///
+/// # Errors
+///
+/// Returns `PyIOError` if the file cannot be written, `PyPermissionError`
+/// if write permission is denied, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn atomic_write_file_async(py: Python<'_>, path: String, contents: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&path)?;
+    let future = async move {
+        use std::path::Path;
+        let path_clone = path.clone();
+        
+        let file_path = Path::new(&path);
+        let dir = file_path.parent().ok_or_else(|| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>("Path has no parent directory")
+        })?;
+        
+        // Create temporary file in same directory
+        let file_name = file_path.file_name().ok_or_else(|| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>("Path has no file name")
+        })?;
+        
+        let temp_path = dir.join(format!(".{}.tmp", file_name.to_string_lossy()));
+        let temp_path_str = temp_path.to_string_lossy().to_string();
+        
+        // Write to temporary file
+        tokio::fs::write(&temp_path, contents).await.map_err(|e| {
+            map_io_error(e, &temp_path_str, "write temporary file")
+        })?;
+        
+        // Atomically replace target file
+        tokio::fs::rename(&temp_path, &path).await.map_err(|e| {
+            // Clean up temp file on error (intentionally drop future in sync context)
+            drop(tokio::fs::remove_file(&temp_path));
+            map_io_error(e, &path_clone, "atomically write file")
+        })
+    };
+    future_into_py(py, future)
+}
+
+/// Write bytes to a file atomically using a temporary file.
+///
+/// Writes bytes to a temporary file first, then atomically replaces
+/// the target file by renaming. This ensures the target file is never
+/// in a partially-written state. All I/O operations execute outside
+/// the Python GIL using native Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `path` - Path to the file to write
+/// * `contents` - Bytes to write to the file
+///
+/// # Returns
+///
+/// A coroutine that yields `None` on success.
+///
+/// # Errors
+///
+/// Returns `PyIOError` if the file cannot be written, `PyPermissionError`
+/// if write permission is denied, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn atomic_write_file_bytes_async<'a>(
+    py: Python<'a>,
+    path: String,
+    contents: &'a Bound<'a, PyBytes>,
+) -> PyResult<Bound<'a, PyAny>> {
+    validate_path(&path)?;
+    let bytes = contents.as_bytes().to_vec();
+    let future = async move {
+        use std::path::Path;
+        let path_clone = path.clone();
+        
+        let file_path = Path::new(&path);
+        let dir = file_path.parent().ok_or_else(|| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>("Path has no parent directory")
+        })?;
+        
+        // Create temporary file in same directory
+        let file_name = file_path.file_name().ok_or_else(|| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>("Path has no file name")
+        })?;
+        
+        let temp_path = dir.join(format!(".{}.tmp", file_name.to_string_lossy()));
+        let temp_path_str = temp_path.to_string_lossy().to_string();
+        
+        // Write to temporary file
+        tokio::fs::write(&temp_path, bytes).await.map_err(|e| {
+            map_io_error(e, &temp_path_str, "write temporary file")
+        })?;
+        
+        // Atomically replace target file
+        tokio::fs::rename(&temp_path, &path).await.map_err(|e| {
+            // Clean up temp file on error (intentionally drop future in sync context)
+            drop(tokio::fs::remove_file(&temp_path));
+            map_io_error(e, &path_clone, "atomically write file")
+        })
+    };
+    future_into_py(py, future)
+}
+
+/// Move a file atomically.
+///
+/// Moves a file from source to destination atomically. For cross-device
+/// moves, it will copy atomically and then remove the source. All I/O
+/// operations execute outside the Python GIL using native Tokio, ensuring
+/// true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `src` - Path to the source file
+/// * `dst` - Path to the destination file
+///
+/// # Returns
+///
+/// A coroutine that yields `None` on success.
+///
+/// # Errors
+///
+/// Returns `PyFileNotFoundError` if the source file does not exist,
+/// `PyIOError` if the file cannot be moved, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn atomic_move_file_async(py: Python<'_>, src: String, dst: String) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&src)?;
+    validate_path(&dst)?;
+    let future = async move {
+        let src_clone = src.clone();
+        let dst_clone = dst.clone();
+        
+        // Try rename first (atomic on same filesystem)
+        match tokio::fs::rename(&src, &dst).await {
+            Ok(_) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::CrossesDevices => {
+                // Cross-device move: copy atomically then remove
+                use std::path::Path;
+                let dst_path = Path::new(&dst);
+                let dir = dst_path.parent().ok_or_else(|| {
+                    PyErr::new::<pyo3::exceptions::PyValueError, _>("Destination path has no parent directory")
+                })?;
+                
+                let file_name = dst_path.file_name().ok_or_else(|| {
+                    PyErr::new::<pyo3::exceptions::PyValueError, _>("Destination path has no file name")
+                })?;
+                
+                let temp_path = dir.join(format!(".{}.tmp", file_name.to_string_lossy()));
+                
+                // Copy to temp file
+                tokio::fs::copy(&src, &temp_path).await.map_err(|e| {
+                    map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "copy file")
+                })?;
+                
+                // Atomically replace destination
+                tokio::fs::rename(&temp_path, &dst).await.map_err(|e| {
+                    // Clean up temp file on error (intentionally drop future in sync context)
+                    drop(tokio::fs::remove_file(&temp_path));
+                    map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "atomically move file")
+                })?;
+                
+                // Remove source file
+                tokio::fs::remove_file(&src).await.map_err(|e| {
+                    map_io_error(e, &src_clone, "remove source file")
+                })
+            }
+            Err(e) => Err(map_io_error(e, &format!("{src_clone} -> {dst_clone}"), "atomically move file")),
+        }
+    };
+    future_into_py(py, future)
+}
+
+// File locking operations
+
+use std::fs::File as StdFile;
+
+/// File lock for advisory file locking.
+///
+/// Provides advisory file locks for coordinating access to files across
+/// processes. Supports both shared (read) and exclusive (write) locks.
+/// The lock is automatically released when the object is dropped or when
+/// `release()` is called.
+///
+/// # Example
+///
+/// ```python
+/// async with rapfiles.lock_file("file.txt", exclusive=True) as lock:
+///     # File is locked here
+///     await rapfiles.write_file("file.txt", "content")
+/// # Lock is automatically released
+/// ```
+#[pyclass]
+struct FileLock {
+    file: Arc<StdFile>,
+    path: String,
+    #[allow(dead_code)]
+    exclusive: bool,
+}
+
+#[pymethods]
+impl FileLock {
+    /// Default constructor - use lock_file() instead.
+    #[new]
+    fn new() -> PyResult<Self> {
+        Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            "FileLock cannot be instantiated directly. Use rapfiles.lock_file() instead."
+        ))
+    }
+
+    /// Release the file lock.
+    ///
+    /// Releases the advisory file lock. The lock is also automatically
+    /// released when the object is dropped.
+    ///
+    /// # Returns
+    ///
+    /// A coroutine that yields `None` on success.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PyIOError` if the lock cannot be released.
+    fn release<'a>(&self, py: Python<'a>) -> PyResult<Bound<'a, PyAny>> {
+        let file = Arc::clone(&self.file);
+        let path = self.path.clone();
+        
+        let future = async move {
+            // Unlock the file (blocking operation)
+            tokio::task::spawn_blocking(move || {
+                use fs2::FileExt;
+                FileExt::unlock(&*file).map_err(|e| {
+                    PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                        "Failed to release lock on {path}: {e}"
+                    ))
+                })
+            })
+            .await
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                "Failed to release lock: {e}"
+            )))?
+        };
+        future_into_py(py, future)
+    }
+
+    /// Async context manager entry.
+    fn __aenter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        // Return self directly - Python's async context manager will handle it
+        slf
+    }
+
+    /// Async context manager exit.
+    fn __aexit__(
+        &self,
+        _exc_type: Option<&Bound<'_, PyAny>>,
+        _exc_val: Option<&Bound<'_, PyAny>>,
+        _exc_tb: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Py<PyAny>> {
+        // Release lock on exit
+        Python::attach(|py| {
+            let release_future = self.release(py)?;
+            // Release is already a coroutine, return it wrapped
+            Ok(release_future.unbind())
+        })
+    }
+}
+
+/// Lock a file asynchronously.
+///
+/// Acquires an advisory file lock on the specified file. The lock can be
+/// shared (read) or exclusive (write). The file is created if it doesn't
+/// exist. All I/O operations execute outside the Python GIL using native
+/// Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `path` - Path to the file to lock
+/// * `exclusive` - If true, acquire exclusive (write) lock; if false, acquire shared (read) lock
+///
+/// # Returns
+///
+/// A coroutine that yields a `FileLock` object that can be used as an async context manager.
+///
+/// # Errors
+///
+/// Returns `PyIOError` if the file cannot be locked, or `PyValueError` if the path is invalid.
+#[pyfunction]
+fn lock_file_async(py: Python<'_>, path: String, exclusive: bool) -> PyResult<Bound<'_, PyAny>> {
+    validate_path(&path)?;
+    let future = async move {
+        let path_clone = path.clone();
+        
+        // Open or create the file
+        let file = tokio::task::spawn_blocking({
+            let path = path_clone.clone();
+            let path_clone_for_error = path_clone.clone();
+            move || {
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .truncate(true)
+                    .read(true)
+                    .write(true)
+                    .open(&path)
+                    .map_err(|e| map_io_error(e, &path_clone_for_error, "open file for locking"))
+            }
+        })
+        .await
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+            "Failed to open file: {e}"
+        )))??;
+        
+        // Acquire the lock (blocking operation)
+        {
+            let file_clone = file.try_clone().map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                    "Failed to clone file handle: {e}"
+                ))
+            })?;
+            tokio::task::spawn_blocking({
+                let path_clone2 = path_clone.clone();
+                move || {
+                    if exclusive {
+                        fs2::FileExt::lock_exclusive(&file_clone)
+                    } else {
+                        fs2::FileExt::lock_shared(&file_clone)
+                    }
+                    .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                        "Failed to acquire lock on {path_clone2}: {e}"
+                    )))
+                }
+            })
+            .await
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!(
+                "Failed to acquire lock: {e}"
+            )))??;
+        }
+        
+        Ok(FileLock {
+            file: Arc::new(file),
+            path: path_clone,
+            exclusive,
+        })
+    };
+    future_into_py(py, future)
+}
+
+// Batch operations
+
+/// Read multiple files concurrently.
+///
+/// Reads all specified files concurrently and returns their contents.
+/// All I/O operations execute outside the Python GIL using native Tokio,
+/// ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `paths` - Vector of file paths to read
+///
+/// # Returns
+///
+/// A coroutine that yields a list of (path, result) tuples where:
+/// - `path`: The file path
+/// - `result`: Either the file contents as bytes, or an error message string
+#[pyfunction]
+fn read_files_async(py: Python<'_>, paths: Vec<String>) -> PyResult<Bound<'_, PyAny>> {
+    // Validate all paths
+    for path in &paths {
+        validate_path(path)?;
+    }
+    
+    let future = async move {
+        use futures::future;
+        
+        let read_futures: Vec<_> = paths.iter().map(|path| {
+            let path_clone = path.clone();
+            async move {
+                let path_for_result = path_clone.clone();
+                match tokio::fs::read(&path_clone).await {
+                    Ok(bytes) => (path_clone, Ok(bytes)),
+                    Err(e) => (path_for_result.clone(), Err(format!("Failed to read file {path_for_result}: {e}"))),
+                }
+            }
+        }).collect();
+        
+        let results = future::join_all(read_futures).await;
+        // Convert to tuples with bytes (Ok) or error strings (Err)
+        // PyO3 can convert both bytes and String to Python objects
+        let python_results: Vec<(String, Py<PyAny>)> = results.into_iter().map(|(path, result)| {
+            Python::attach(|py| {
+                let py_obj: Py<PyAny> = match result {
+                    Ok(bytes) => PyBytes::new(py, &bytes).into(),
+                    Err(err_str) => PyString::new(py, &err_str).into(),
+                };
+                (path, py_obj)
+            })
+        }).collect();
+        Ok(python_results)
+    };
+    future_into_py(py, future)
+}
+
+/// Write multiple files concurrently.
+///
+/// Writes contents to all specified files concurrently. All I/O operations
+/// execute outside the Python GIL using native Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `files` - Vector of (path, contents) tuples to write
+///
+/// # Returns
+///
+/// A coroutine that yields a list of (path, result) tuples where:
+/// - `path`: The file path
+/// - `result`: Either Ok(()) on success, or an error message string
+#[pyfunction]
+fn write_files_async(py: Python<'_>, files: Vec<(String, Vec<u8>)>) -> PyResult<Bound<'_, PyAny>> {
+    // Validate all paths
+    for (path, _) in &files {
+        validate_path(path)?;
+    }
+    let files_data = files;
+    
+    let future = async move {
+        use futures::future;
+        
+        let write_futures: Vec<_> = files_data.iter().map(|(path, bytes)| {
+            let path_clone = path.clone();
+            let bytes_clone = bytes.clone();
+            async move {
+                let path_for_result = path_clone.clone();
+                match tokio::fs::write(&path_clone, bytes_clone).await {
+                    Ok(_) => (path_clone, Ok(())),
+                    Err(e) => (path_for_result.clone(), Err(format!("Failed to write file {path_for_result}: {e}"))),
+                }
+            }
+        }).collect();
+        
+        let results = future::join_all(write_futures).await;
+        // Convert Result<(), String> to Python-compatible values
+        let python_results: Vec<(String, Py<PyAny>)> = results.into_iter().map(|(path, result)| {
+            Python::attach(|py| {
+                let py_obj: Py<PyAny> = match result {
+                    Ok(_) => py.None(),
+                    Err(err_str) => PyString::new(py, &err_str).into(),
+                };
+                (path, py_obj)
+            })
+        }).collect();
+        Ok(python_results)
+    };
+    future_into_py(py, future)
+}
+
+/// Copy multiple files concurrently.
+///
+/// Copies all specified files concurrently. All I/O operations execute
+/// outside the Python GIL using native Tokio, ensuring true async behavior.
+///
+/// # Arguments
+///
+/// * `py` - Python GIL token
+/// * `files` - Vector of (src, dst) tuples to copy
+///
+/// # Returns
+///
+/// A coroutine that yields a list of (src, dst, result) tuples where:
+/// - `src`: The source file path
+/// - `dst`: The destination file path
+/// - `result`: Either Ok(()) on success, or an error message string
+#[pyfunction]
+fn copy_files_async(py: Python<'_>, files: Vec<(String, String)>) -> PyResult<Bound<'_, PyAny>> {
+    // Validate all paths
+    for (src, dst) in &files {
+        validate_path(src)?;
+        validate_path(dst)?;
+    }
+    
+    let future = async move {
+        use futures::future;
+        
+        let copy_futures: Vec<_> = files.iter().map(|(src, dst)| {
+            let src_clone = src.clone();
+            let dst_clone = dst.clone();
+            async move {
+                let src_for_result = src_clone.clone();
+                let dst_for_result = dst_clone.clone();
+                match tokio::fs::copy(&src_clone, &dst_clone).await {
+                    Ok(_) => (src_clone, dst_clone, Ok(())),
+                    Err(e) => (src_for_result.clone(), dst_for_result.clone(), Err(format!("Failed to copy file {src_for_result} -> {dst_for_result}: {e}"))),
+                }
+            }
+        }).collect();
+        
+        let results = future::join_all(copy_futures).await;
+        // Convert Result<(), String> to Python-compatible values
+        let python_results: Vec<(String, String, Py<PyAny>)> = results.into_iter().map(|(src, dst, result)| {
+            Python::attach(|py| {
+                let py_obj: Py<PyAny> = match result {
+                    Ok(_) => py.None(),
+                    Err(err_str) => PyString::new(py, &err_str).into(),
+                };
+                (src, dst, py_obj)
+            })
+        }).collect();
+        Ok(python_results)
     };
     future_into_py(py, future)
 }

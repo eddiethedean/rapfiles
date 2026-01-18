@@ -2,9 +2,9 @@
 
 ## Release Information
 
-**Current Version**: 0.1.1  
-**Latest Release Date**: 2026-01-16  
-**Status**: Phase 1 Complete - Ready for Production Use
+**Current Version**: 0.2.0  
+**Latest Release Date**: 2026-01-17  
+**Status**: Phase 1 & Phase 2 Complete - Ready for Production Use
 
 ---
 
