@@ -1,7 +1,6 @@
 """PEP 0492/Python 3.5+ tests for binary files - migrated from aiofiles."""
 
 import io
-from os.path import dirname, join
 from pathlib import Path
 
 import pytest
@@ -109,7 +108,7 @@ async def test_simple_seek(mode, tmp_path):
     # Skip rb+ mode due to known issue with read operations in rb+ mode
     if mode == "rb+":
         pytest.skip("rb+ mode read operations have known issues in rapfiles")
-    
+
     filename = "bigfile.bin"
     content = b"0123456789" * 4 * io.DEFAULT_BUFFER_SIZE
 

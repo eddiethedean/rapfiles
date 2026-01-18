@@ -1,10 +1,7 @@
 """Simple tests migrated from aiofiles - basic functionality verification."""
 
 import asyncio
-import os
-from pathlib import Path
 
-import pytest
 
 import rapfiles
 

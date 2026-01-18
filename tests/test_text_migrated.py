@@ -1,7 +1,6 @@
 """PEP 0492/Python 3.5+ tests for text files - migrated from aiofiles."""
 
 import io
-from os.path import dirname, join
 from pathlib import Path
 
 import pytest
@@ -56,8 +55,10 @@ async def test_simple_readlines(mode):
 
     # Normalize line endings for comparison
     expected_normalized = [line.rstrip("\n") + "\n" for line in expected]
-    actual_normalized = [line.rstrip("\n") + "\n" if isinstance(line, str) else line for line in actual]
-    
+    actual_normalized = [
+        line.rstrip("\n") + "\n" if isinstance(line, str) else line for line in actual
+    ]
+
     assert actual_normalized == expected_normalized
 
 
@@ -130,7 +131,7 @@ async def test_simple_seek(mode, tmp_path):
     # Skip r+ mode due to known issue with read operations in r+ mode
     if mode == "r+":
         pytest.skip("r+ mode read operations have known issues in rapfiles")
-    
+
     filename = "bigfile.bin"
     content = "0123456789" * 4 * io.DEFAULT_BUFFER_SIZE
 

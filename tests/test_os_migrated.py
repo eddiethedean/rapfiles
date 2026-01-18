@@ -3,7 +3,6 @@
 import os
 import platform
 from os import stat
-from os.path import dirname, exists, isdir, join
 from pathlib import Path
 
 import pytest
@@ -18,17 +17,9 @@ RESOURCES_DIR = Path(__file__).parent / "resources"
 async def test_stat():
     """Test the stat call."""
     filename = RESOURCES_DIR / "test_file1.txt"
-    
-    # Ensure file exists and has content
-    filename.write_text("0123456789")
-    # Force sync to ensure file is written (os.sync() not available on Windows)
-    import os
-    if hasattr(os, 'sync'):
-        os.sync()
-    else:
-        # On Windows, flush and sync using alternative method
-        import sys
-        sys.stdout.flush()
+
+    # Ensure file exists and has content using rapfiles for async write
+    await rapfiles.write_file(str(filename), "0123456789")
 
     stat_res = await rapfiles.stat(str(filename))
 
@@ -36,9 +27,7 @@ async def test_stat():
     assert stat_res.size == 10
 
 
-@pytest.mark.skipif(
-    platform.system() == "Windows", reason="No statvfs on Windows"
-)
+@pytest.mark.skipif(platform.system() == "Windows", reason="No statvfs on Windows")
 async def test_statvfs():
     """Test the statvfs call - not yet implemented in rapfiles."""
     pytest.skip("statvfs not yet implemented in rapfiles")
@@ -52,7 +41,7 @@ async def test_remove(tmp_path):
     assert await rapfiles.exists(str(filename))
     # rapfiles doesn't have remove() yet, use remove_file_bytes or write_file_bytes
     # For now, we'll use os.remove as a workaround
-    import os
+
     os.remove(str(filename))
     assert not await rapfiles.exists(str(filename))
 
@@ -64,7 +53,7 @@ async def test_unlink(tmp_path):
 
     assert await rapfiles.exists(str(filename))
     # rapfiles doesn't have unlink() yet
-    import os
+
     os.unlink(str(filename))
     assert not await rapfiles.exists(str(filename))
 
@@ -83,13 +72,17 @@ async def test_rename(tmp_path):
     old_filename = tmp_path / "test_file1.txt"
     new_filename = tmp_path / "test_file2.txt"
     old_filename.write_text("test content")
-    
+
     # rapfiles doesn't have rename() yet
-    import os
+
     os.rename(str(old_filename), str(new_filename))
-    assert not await rapfiles.exists(str(old_filename)) and await rapfiles.exists(str(new_filename))
+    assert not await rapfiles.exists(str(old_filename)) and await rapfiles.exists(
+        str(new_filename)
+    )
     os.rename(str(new_filename), str(old_filename))
-    assert await rapfiles.exists(str(old_filename)) and not await rapfiles.exists(str(new_filename))
+    assert await rapfiles.exists(str(old_filename)) and not await rapfiles.exists(
+        str(new_filename)
+    )
 
 
 async def test_renames(tmp_path):
@@ -98,11 +91,13 @@ async def test_renames(tmp_path):
     old_filename = tmp_path / "test_file1.txt"
     new_filename = subdir / "test_file2.txt"
     old_filename.write_text("test content")
-    
+
     # rapfiles doesn't have renames() yet
-    import os
+
     os.renames(str(old_filename), str(new_filename))
-    assert not await rapfiles.exists(str(old_filename)) and await rapfiles.exists(str(new_filename))
+    assert not await rapfiles.exists(str(old_filename)) and await rapfiles.exists(
+        str(new_filename)
+    )
     os.renames(str(new_filename), str(old_filename))
     assert (
         await rapfiles.exists(str(old_filename))
@@ -118,19 +113,29 @@ async def test_replace(tmp_path):
     old_filename.write_text("test content")
 
     # rapfiles doesn't have replace() yet
-    import os
+
     os.replace(str(old_filename), str(new_filename))
-    assert not await rapfiles.exists(str(old_filename)) and await rapfiles.exists(str(new_filename))
+    assert not await rapfiles.exists(str(old_filename)) and await rapfiles.exists(
+        str(new_filename)
+    )
     os.replace(str(new_filename), str(old_filename))
-    assert await rapfiles.exists(str(old_filename)) and not await rapfiles.exists(str(new_filename))
+    assert await rapfiles.exists(str(old_filename)) and not await rapfiles.exists(
+        str(new_filename)
+    )
 
     new_filename.write_text("Test file")
-    assert await rapfiles.exists(str(old_filename)) and await rapfiles.exists(str(new_filename))
+    assert await rapfiles.exists(str(old_filename)) and await rapfiles.exists(
+        str(new_filename)
+    )
 
     os.replace(str(old_filename), str(new_filename))
-    assert not await rapfiles.exists(str(old_filename)) and await rapfiles.exists(str(new_filename))
+    assert not await rapfiles.exists(str(old_filename)) and await rapfiles.exists(
+        str(new_filename)
+    )
     os.replace(str(new_filename), str(old_filename))
-    assert await rapfiles.exists(str(old_filename)) and not await rapfiles.exists(str(new_filename))
+    assert await rapfiles.exists(str(old_filename)) and not await rapfiles.exists(
+        str(new_filename)
+    )
 
 
 @pytest.mark.skipif(
@@ -180,9 +185,9 @@ async def test_islink(tmp_path):
     src_filename = tmp_path / "test_file1.txt"
     dst_filename = tmp_path / "test_file2.txt"
     src_filename.write_text("test content")
-    
+
     # rapfiles doesn't have symlink() yet
-    import os
+
     os.symlink(str(src_filename), str(dst_filename))
     # rapfiles doesn't have islink() yet - use os.path.islink
     assert os.path.islink(str(dst_filename))
@@ -194,6 +199,7 @@ async def test_ismount():
     filename = RESOURCES_DIR
     # rapfiles doesn't have ismount() yet
     import os.path
+
     assert not os.path.ismount(str(filename))
     assert os.path.ismount("/")
 
@@ -201,17 +207,9 @@ async def test_ismount():
 async def test_getsize():
     """Test path.getsize call."""
     filename = RESOURCES_DIR / "test_file1.txt"
-    # Ensure file exists and has content
-    filename.write_text("0123456789")
-    # Force sync to ensure file is written (os.sync() not available on Windows)
-    import os
-    if hasattr(os, 'sync'):
-        os.sync()
-    else:
-        # On Windows, flush and sync using alternative method
-        import sys
-        sys.stdout.flush()
-    
+    # Ensure file exists and has content using rapfiles for async write
+    await rapfiles.write_file(str(filename), "0123456789")
+
     result = await rapfiles.stat(str(filename))
     # File should be 10 bytes
     assert result.size == 10
@@ -222,6 +220,7 @@ async def test_samefile():
     filename = RESOURCES_DIR / "test_file1.txt"
     # rapfiles doesn't have samefile() yet
     import os.path
+
     result = os.path.samefile(str(filename), str(filename))
     assert result
 
@@ -231,6 +230,7 @@ async def test_sameopenfile():
     filename = RESOURCES_DIR / "test_file1.txt"
     # rapfiles doesn't have sameopenfile() yet
     import os.path
+
     result = os.path.samefile(str(filename), str(filename))
     assert result
 
@@ -262,9 +262,9 @@ async def test_link(tmp_path):
     dst_filename = tmp_path / "test_file2.txt"
     src_filename.write_text("test content")
     initial_src_nlink = stat(str(src_filename)).st_nlink
-    
+
     # rapfiles doesn't have link() yet
-    import os
+
     os.link(str(src_filename), str(dst_filename))
     assert (
         await rapfiles.exists(str(src_filename))
@@ -286,9 +286,9 @@ async def test_symlink(tmp_path):
     src_filename = tmp_path / "test_file1.txt"
     dst_filename = tmp_path / "test_file2.txt"
     src_filename.write_text("test content")
-    
+
     # rapfiles doesn't have symlink() yet
-    import os
+
     os.symlink(str(src_filename), str(dst_filename))
     assert (
         await rapfiles.exists(str(src_filename))
@@ -296,7 +296,9 @@ async def test_symlink(tmp_path):
         and stat(str(src_filename)).st_ino == stat(str(dst_filename)).st_ino
     )
     os.remove(str(dst_filename))
-    assert await rapfiles.exists(str(src_filename)) and not await rapfiles.exists(str(dst_filename))
+    assert await rapfiles.exists(str(src_filename)) and not await rapfiles.exists(
+        str(dst_filename)
+    )
 
 
 @pytest.mark.skipif(
@@ -307,10 +309,12 @@ async def test_readlink(tmp_path):
     src_filename = tmp_path / "test_file1.txt"
     dst_filename = tmp_path / "test_file2.txt"
     src_filename.write_text("test content")
-    
+
     # rapfiles doesn't have readlink() yet
-    import os
+
     os.symlink(str(src_filename), str(dst_filename))
     result = os.readlink(str(dst_filename))
-    assert result == str(src_filename) or os.path.abspath(result) == os.path.abspath(str(src_filename))
+    assert result == str(src_filename) or os.path.abspath(result) == os.path.abspath(
+        str(src_filename)
+    )
     os.remove(str(dst_filename))

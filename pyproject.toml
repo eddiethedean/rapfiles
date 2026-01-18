@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "rapfiles"
-version = "0.1.2"
+version = "0.2.0"
 description = "True async filesystem I/O — no fake async, no GIL stalls."
 readme = "README.md"
 documentation = "https://github.com/eddiethedean/rapfiles/tree/main/docs"
@@ -29,6 +29,13 @@ classifiers = [
 ]
 
 dependencies = []
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=1.2.0",
+    "aiofiles>=25.0",  # For parity tests
+]
 
 [tool.maturin]
 module-name = "rapfiles._rapfiles"
