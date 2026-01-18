@@ -87,6 +87,7 @@ nosetests.xml
 # Documentation
 docs/_build/
 site/
+posts/
 
 # Jupyter Notebook
 .ipynb_checkpoints
